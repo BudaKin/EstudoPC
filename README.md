@@ -13,6 +13,11 @@ python3 -m venv .venv
 source .venv/bin/activate
 ```
 
+- Para "ativar" o ambiente virtual (fish)
+```bash
+source .venv/bin/activate.fish
+```
+
 - Baixando Komm
 ```bash
 pip install komm
