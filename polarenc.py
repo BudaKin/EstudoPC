@@ -102,11 +102,11 @@ u[Q1[N-K:]] = msg # definindo os bits de mensagem
 
 m = 1 # número de bits combinados em um u
 
-for d in range(n-1, -1, -1): # range(start, stop, step)
-    for i in range(0, N, 2*m):
-        a = u[i:i+m]
-        b = u[i+m:i+2*m]
-        u[i:i+2*m] = np.concatenate([ (a + b) % 2, b ]) # combinando
+for d in range(n-1, -1, -1): # range(start, stop, step), d é a profundidade
+    for i in range(0, N, 2*m): # i é o nó, tudo pode ser representado por (d, i)
+        a = u[i:i+m] # u_impar
+        b = u[i+m:i+2*m] # u_par
+        u[i:i+2*m] = np.concatenate([ (a + b) % 2, b ]) # transf polar (u_impar + u_par, u_par)
     m = m*2
 
 print(Q1)
