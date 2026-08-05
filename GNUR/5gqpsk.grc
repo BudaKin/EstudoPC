@@ -364,23 +364,6 @@ blocks:
     coordinate: [1376, 416.0]
     rotation: 0
     state: enabled
-- name: blocks_char_to_float_0_0
-  id: blocks_char_to_float
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    scale: '1'
-    vlen: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1520, 848.0]
-    rotation: 0
-    state: enabled
 - name: blocks_file_source_0
   id: blocks_file_source
   parameters:
@@ -526,22 +509,6 @@ blocks:
     coordinate: [864, 248.0]
     rotation: 0
     state: true
-- name: blocks_unpack_k_bits_bb_2
-  id: blocks_unpack_k_bits_bb
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    k: '2'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1352, 776.0]
-    rotation: 0
-    state: enabled
 - name: blocks_vector_source_x_0
   id: blocks_vector_source_x
   parameters:
@@ -583,22 +550,6 @@ blocks:
     coordinate: [368, 452.0]
     rotation: 0
     state: enabled
-- name: digital_constellation_decoder_cb_0
-  id: digital_constellation_decoder_cb
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    constellation: qpsk
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1112, 776.0]
-    rotation: 0
-    state: enabled
 - name: digital_constellation_encoder_bc_0
   id: digital_constellation_encoder_bc
   parameters:
@@ -629,9 +580,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1144, 952.0]
+    coordinate: [1112, 952.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_costas_loop_cc_0
   id: digital_costas_loop_cc
   parameters:
@@ -649,7 +600,7 @@ blocks:
     bus_structure: null
     coordinate: [872, 928.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: digital_diff_decoder_bb_0
   id: digital_diff_decoder_bb
   parameters:
@@ -667,22 +618,6 @@ blocks:
     coordinate: [1928, 696.0]
     rotation: 0
     state: disabled
-- name: digital_map_bb_0
-  id: digital_map_bb
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    map: '[-1, 1]'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1560, 688.0]
-    rotation: 0
-    state: enabled
 - name: digital_symbol_sync_xx_0
   id: digital_symbol_sync_xx
   parameters:
@@ -716,8 +651,8 @@ blocks:
     _source_code: "import numpy as np\nimport pmt\nfrom gnuradio import gr\n\nclass\
       \ blk(gr.basic_block):\n    def __init__(self, access_code=\"\", payload_len_in_bits=0,\
       \ tag_key=\"\", max_errors=0):\n        gr.basic_block.__init__(\n         \
-      \   self,\n            name='Find Access Code',\n            in_sig=[np.uint8],\n\
-      \            out_sig=[np.uint8],\n        )\n        self.access_code = np.array([int(b)\
+      \   self,\n            name='Find Access Code',\n            in_sig=[np.float32],\n\
+      \            out_sig=[np.float32],\n        )\n        self.access_code = np.array([int(b)\
       \ for b in access_code])\n        self.payload_len_in_bits = payload_len_in_bits\n\
       \        self.tag_key = pmt.intern(tag_key)\n        self.max_errors = max_errors\n\
       \n    def general_work(self, input_items, output_items):\n        in0 = input_items[0]\n\
@@ -741,12 +676,12 @@ blocks:
     tag_key: '"quadro"'
   states:
     _io_cache: ('Find Access Code', 'blk', [('access_code', "''"), ('payload_len_in_bits',
-      '0'), ('tag_key', "''"), ('max_errors', '0')], [('0', 'byte', 1)], [('0', 'byte',
+      '0'), ('tag_key', "''"), ('max_errors', '0')], [('0', 'float', 1)], [('0', 'float',
       1)], '', ['access_code', 'max_errors', 'payload_len_in_bits', 'tag_key'])
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1352, 560.0]
+    coordinate: [1376, 800.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_decoder_0
@@ -1329,7 +1264,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1736, 704.0]
+    coordinate: [1760, 704.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -1421,8 +1356,6 @@ blocks:
 
 connections:
 - [blocks_char_to_float_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_char_to_float_0_0, '0', fec_extended_tagged_decoder_0, '0']
-- [blocks_char_to_float_0_0, '0', qtgui_time_sink_x_0_0_0, '0']
 - [blocks_file_source_0, '0', blocks_unpack_k_bits_bb_0, '0']
 - [blocks_pack_k_bits_bb_0, '0', network_tcp_sink_0, '0']
 - [blocks_pack_k_bits_bb_1, '0', digital_constellation_encoder_bc_0, '0']
@@ -1432,19 +1365,16 @@ connections:
 - [blocks_throttle2_0, '0', blocks_pack_k_bits_bb_1, '0']
 - [blocks_unpack_k_bits_bb_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [blocks_unpack_k_bits_bb_0_0, '0', blocks_stream_mux_0, '0']
-- [blocks_unpack_k_bits_bb_2, '0', epy_block_0_0, '0']
 - [blocks_vector_source_x_0, '0', blocks_unpack_k_bits_bb_0_0, '0']
 - [channels_channel_model_0, '0', qtgui_sink_x_0_0, '0']
 - [channels_channel_model_0, '0', virtual_sink_1, '0']
-- [digital_constellation_decoder_cb_0, '0', blocks_unpack_k_bits_bb_2, '0']
 - [digital_constellation_encoder_bc_0, '0', interp_fir_filter_xxx_0, '0']
+- [digital_constellation_soft_decoder_cf_0, '0', epy_block_0_0, '0']
 - [digital_costas_loop_cc_0, '0', digital_constellation_soft_decoder_cf_0, '0']
 - [digital_costas_loop_cc_0, '0', qtgui_sink_x_1, '0']
-- [digital_map_bb_0, '0', blocks_char_to_float_0_0, '0']
-- [digital_symbol_sync_xx_0, '0', digital_constellation_decoder_cb_0, '0']
 - [digital_symbol_sync_xx_0, '0', digital_costas_loop_cc_0, '0']
-- [digital_symbol_sync_xx_0, '0', qtgui_sink_x_1, '0']
-- [epy_block_0_0, '0', digital_map_bb_0, '0']
+- [epy_block_0_0, '0', fec_extended_tagged_decoder_0, '0']
+- [epy_block_0_0, '0', qtgui_time_sink_x_0_0_0, '0']
 - [fec_extended_tagged_decoder_0, '0', blocks_pack_k_bits_bb_0, '0']
 - [fec_extended_tagged_encoder_0, '0', blocks_stream_mux_0, '1']
 - [interp_fir_filter_xxx_0, '0', qtgui_sink_x_0, '0']
