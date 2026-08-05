@@ -26,7 +26,9 @@ from PyQt5 import Qt
 from argparse import ArgumentParser
 from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
+from gnuradio import network
 import numpy as np
+import qpsk_5g_epy_block_0_0 as epy_block_0_0  # embedded python block
 import sip
 import threading
 
@@ -120,6 +122,58 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 1):
             self.top_grid_layout.setColumnStretch(c, 1)
+        self.qtgui_time_sink_x_0_0_0 = qtgui.time_sink_f(
+            1024, #size
+            samp_rate, #samp_rate
+            "", #name
+            1, #number of inputs
+            None # parent
+        )
+        self.qtgui_time_sink_x_0_0_0.set_update_time(0.10)
+        self.qtgui_time_sink_x_0_0_0.set_y_axis(-2.0, 2.0)
+
+        self.qtgui_time_sink_x_0_0_0.set_y_label('Amplitude', "")
+
+        self.qtgui_time_sink_x_0_0_0.enable_tags(True)
+        self.qtgui_time_sink_x_0_0_0.set_trigger_mode(qtgui.TRIG_MODE_FREE, qtgui.TRIG_SLOPE_POS, 0.0, 0, 0, "")
+        self.qtgui_time_sink_x_0_0_0.enable_autoscale(False)
+        self.qtgui_time_sink_x_0_0_0.enable_grid(False)
+        self.qtgui_time_sink_x_0_0_0.enable_axis_labels(True)
+        self.qtgui_time_sink_x_0_0_0.enable_control_panel(False)
+        self.qtgui_time_sink_x_0_0_0.enable_stem_plot(False)
+
+
+        labels = ['Signal 1', 'Signal 2', 'Signal 3', 'Signal 4', 'Signal 5',
+            'Signal 6', 'Signal 7', 'Signal 8', 'Signal 9', 'Signal 10']
+        widths = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        colors = ['blue', 'red', 'green', 'black', 'cyan',
+            'magenta', 'yellow', 'dark red', 'dark green', 'dark blue']
+        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
+            1.0, 1.0, 1.0, 1.0, 1.0]
+        styles = [1, 1, 1, 1, 1,
+            1, 1, 1, 1, 1]
+        markers = [-1, -1, -1, -1, -1,
+            -1, -1, -1, -1, -1]
+
+
+        for i in range(1):
+            if len(labels[i]) == 0:
+                self.qtgui_time_sink_x_0_0_0.set_line_label(i, "Data {0}".format(i))
+            else:
+                self.qtgui_time_sink_x_0_0_0.set_line_label(i, labels[i])
+            self.qtgui_time_sink_x_0_0_0.set_line_width(i, widths[i])
+            self.qtgui_time_sink_x_0_0_0.set_line_color(i, colors[i])
+            self.qtgui_time_sink_x_0_0_0.set_line_style(i, styles[i])
+            self.qtgui_time_sink_x_0_0_0.set_line_marker(i, markers[i])
+            self.qtgui_time_sink_x_0_0_0.set_line_alpha(i, alphas[i])
+
+        self._qtgui_time_sink_x_0_0_0_win = sip.wrapinstance(self.qtgui_time_sink_x_0_0_0.qwidget(), Qt.QWidget)
+        self.tabs_grid_layout_2.addWidget(self._qtgui_time_sink_x_0_0_0_win, 0, 2, 1, 1)
+        for r in range(0, 1):
+            self.tabs_grid_layout_2.setRowStretch(r, 1)
+        for c in range(2, 3):
+            self.tabs_grid_layout_2.setColumnStretch(c, 1)
         self.qtgui_time_sink_x_0_0 = qtgui.time_sink_c(
             1024, #size
             samp_rate, #samp_rate
@@ -347,11 +401,14 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             self.tabs_grid_layout_2.setRowStretch(r, 1)
         for c in range(1, 2):
             self.tabs_grid_layout_2.setColumnStretch(c, 1)
+        self.network_tcp_sink_0 = network.tcp_sink(gr.sizeof_char, 1, '127.0.0.1', 2000,2)
         self.interp_fir_filter_xxx_1 = filter.interp_fir_filter_ccc(1, taps/sps)
         self.interp_fir_filter_xxx_1.declare_sample_delay(0)
         self.interp_fir_filter_xxx_0 = filter.interp_fir_filter_ccc(sps, taps)
         self.interp_fir_filter_xxx_0.declare_sample_delay(0)
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
+        self.fec_extended_tagged_decoder_0 = self.fec_extended_tagged_decoder_0 = fec_extended_tagged_decoder_0 = fec.extended_tagged_decoder(decoder_obj_list=PC_dec, ann=None, puncpat='11', integration_period=10000, lentagname="quadro", mtu=1500)
+        self.epy_block_0_0 = epy_block_0_0.blk(access_code=access_code, payload_len_in_bits=N, tag_key="quadro")
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_cc(
             digital.TED_GARDNER,
             sps,
@@ -364,9 +421,9 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             digital.IR_MMSE_8TAP,
             128,
             [])
-        self.digital_diff_encoder_bb_0 = digital.diff_encoder_bb(4, digital.DIFF_DIFFERENTIAL)
-        self.digital_costas_loop_cc_0 = digital.costas_loop_cc((np.pi / 100), 4, False)
+        self.digital_map_bb_0 = digital.map_bb([-1, 1])
         self.digital_constellation_encoder_bc_0 = digital.constellation_encoder_bc(qpsk)
+        self.digital_constellation_decoder_cb_0 = digital.constellation_decoder_cb(qpsk)
         self.channels_channel_model_0 = channels.channel_model(
             noise_voltage=noise_voltage,
             frequency_offset=0.0,
@@ -375,14 +432,17 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             noise_seed=0,
             block_tags=True)
         self.blocks_vector_source_x_0 = blocks.vector_source_b((0xE1, 0x5A, 0xE8, 0x93), True, 1, [])
+        self.blocks_unpack_k_bits_bb_2 = blocks.unpack_k_bits_bb(2)
         self.blocks_unpack_k_bits_bb_0_0 = blocks.unpack_k_bits_bb(8)
         self.blocks_unpack_k_bits_bb_0 = blocks.unpack_k_bits_bb(8)
         self.blocks_throttle2_0 = blocks.throttle( gr.sizeof_char*1, bit_rate, True, 0 if "auto" == "auto" else max( int(float(0.1) * bit_rate) if "auto" == "time" else int(0.1), 1) )
         self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, K, "quadro")
         self.blocks_stream_mux_0 = blocks.stream_mux(gr.sizeof_char*1, (32, N))
         self.blocks_pack_k_bits_bb_1 = blocks.pack_k_bits_bb(2)
+        self.blocks_pack_k_bits_bb_0 = blocks.pack_k_bits_bb(8)
         self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, 'alice.txt', True, 0, 0)
         self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
+        self.blocks_char_to_float_0_0 = blocks.char_to_float(1, 1)
         self.blocks_char_to_float_0 = blocks.char_to_float(1, 1)
 
 
@@ -390,21 +450,28 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         # Connections
         ##################################################
         self.connect((self.blocks_char_to_float_0, 0), (self.qtgui_time_sink_x_0, 0))
+        self.connect((self.blocks_char_to_float_0_0, 0), (self.fec_extended_tagged_decoder_0, 0))
+        self.connect((self.blocks_char_to_float_0_0, 0), (self.qtgui_time_sink_x_0_0_0, 0))
         self.connect((self.blocks_file_source_0, 0), (self.blocks_unpack_k_bits_bb_0, 0))
-        self.connect((self.blocks_pack_k_bits_bb_1, 0), (self.digital_diff_encoder_bb_0, 0))
+        self.connect((self.blocks_pack_k_bits_bb_0, 0), (self.network_tcp_sink_0, 0))
+        self.connect((self.blocks_pack_k_bits_bb_1, 0), (self.digital_constellation_encoder_bc_0, 0))
         self.connect((self.blocks_stream_mux_0, 0), (self.blocks_char_to_float_0, 0))
         self.connect((self.blocks_stream_mux_0, 0), (self.blocks_throttle2_0, 0))
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.fec_extended_tagged_encoder_0, 0))
         self.connect((self.blocks_throttle2_0, 0), (self.blocks_pack_k_bits_bb_1, 0))
         self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.blocks_stream_to_tagged_stream_0, 0))
         self.connect((self.blocks_unpack_k_bits_bb_0_0, 0), (self.blocks_stream_mux_0, 0))
+        self.connect((self.blocks_unpack_k_bits_bb_2, 0), (self.epy_block_0_0, 0))
         self.connect((self.blocks_vector_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0_0, 0))
         self.connect((self.channels_channel_model_0, 0), (self.interp_fir_filter_xxx_1, 0))
         self.connect((self.channels_channel_model_0, 0), (self.qtgui_sink_x_0_0, 0))
+        self.connect((self.digital_constellation_decoder_cb_0, 0), (self.blocks_unpack_k_bits_bb_2, 0))
         self.connect((self.digital_constellation_encoder_bc_0, 0), (self.interp_fir_filter_xxx_0, 0))
-        self.connect((self.digital_costas_loop_cc_0, 0), (self.qtgui_sink_x_1, 0))
-        self.connect((self.digital_diff_encoder_bb_0, 0), (self.digital_constellation_encoder_bc_0, 0))
-        self.connect((self.digital_symbol_sync_xx_0, 0), (self.digital_costas_loop_cc_0, 0))
+        self.connect((self.digital_map_bb_0, 0), (self.blocks_char_to_float_0_0, 0))
+        self.connect((self.digital_symbol_sync_xx_0, 0), (self.digital_constellation_decoder_cb_0, 0))
+        self.connect((self.digital_symbol_sync_xx_0, 0), (self.qtgui_sink_x_1, 0))
+        self.connect((self.epy_block_0_0, 0), (self.digital_map_bb_0, 0))
+        self.connect((self.fec_extended_tagged_decoder_0, 0), (self.blocks_pack_k_bits_bb_0, 0))
         self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_stream_mux_0, 1))
         self.connect((self.interp_fir_filter_xxx_0, 0), (self.channels_channel_model_0, 0))
         self.connect((self.interp_fir_filter_xxx_0, 0), (self.qtgui_sink_x_0, 0))
@@ -460,6 +527,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.qtgui_sink_x_0_0.set_frequency_range(0, self.samp_rate)
         self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_0_0.set_samp_rate(self.samp_rate)
+        self.qtgui_time_sink_x_0_0_0.set_samp_rate(self.samp_rate)
 
     def get_RelSeq(self):
         return self.RelSeq
@@ -475,6 +543,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.N = N
         self.set_frozen_pos(np.sort(self.RelSeq[self.RelSeq < self.N][:self.N-self.K]))
         self.set_frozen_val(np.zeros(self.N-self.K, dtype=int))
+        self.epy_block_0_0.payload_len_in_bits = self.N
 
     def get_K(self):
         return self.K
@@ -524,6 +593,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
 
     def set_qpsk(self, qpsk):
         self.qpsk = qpsk
+        self.digital_constellation_decoder_cb_0.set_constellation(self.qpsk)
         self.digital_constellation_encoder_bc_0.set_constellation(self.qpsk)
 
     def get_payload_len(self):
@@ -544,6 +614,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
 
     def set_access_code(self, access_code):
         self.access_code = access_code
+        self.epy_block_0_0.access_code = self.access_code
 
     def get_PC_enc(self):
         return self.PC_enc
