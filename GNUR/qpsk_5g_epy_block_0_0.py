@@ -3,7 +3,7 @@ import pmt
 from gnuradio import gr
 
 class blk(gr.basic_block):
-    def __init__(self, access_code="", payload_len_in_bits=0, tag_key="", max_errors=0):
+    def __init__(self, access_code="", payload_len_in_bits=0, tag_key="", max_errors=0, threshold=0.5):
         gr.basic_block.__init__(
             self,
             name='Find Access Code',
@@ -14,6 +14,7 @@ class blk(gr.basic_block):
         self.payload_len_in_bits = payload_len_in_bits
         self.tag_key = pmt.intern(tag_key)
         self.max_errors = max_errors
+        self.threshold = threshold
 
     def general_work(self, input_items, output_items):
         in0 = input_items[0]
@@ -24,7 +25,7 @@ class blk(gr.basic_block):
             return 0
         if len(out0) < pl_len:
             return 0
-        n_errors = np.count_nonzero(in0[:ac_len] != self.access_code)
+        n_errors = np.count_nonzero((in0[:ac_len] >= self.threshold).astype(int) != self.access_code)
         if n_errors > self.max_errors:
             self.consume(0, 1)  # Não é o mais otimizado. :D
             return 0

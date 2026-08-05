@@ -642,7 +642,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [544, 792.0]
+    coordinate: [560, 792.0]
     rotation: 0
     state: true
 - name: epy_block_0_0
@@ -650,19 +650,20 @@ blocks:
   parameters:
     _source_code: "import numpy as np\nimport pmt\nfrom gnuradio import gr\n\nclass\
       \ blk(gr.basic_block):\n    def __init__(self, access_code=\"\", payload_len_in_bits=0,\
-      \ tag_key=\"\", max_errors=0):\n        gr.basic_block.__init__(\n         \
-      \   self,\n            name='Find Access Code',\n            in_sig=[np.float32],\n\
+      \ tag_key=\"\", max_errors=0, threshold=0.5):\n        gr.basic_block.__init__(\n\
+      \            self,\n            name='Find Access Code',\n            in_sig=[np.float32],\n\
       \            out_sig=[np.float32],\n        )\n        self.access_code = np.array([int(b)\
       \ for b in access_code])\n        self.payload_len_in_bits = payload_len_in_bits\n\
       \        self.tag_key = pmt.intern(tag_key)\n        self.max_errors = max_errors\n\
-      \n    def general_work(self, input_items, output_items):\n        in0 = input_items[0]\n\
-      \        out0 = output_items[0]\n        ac_len = self.access_code.size\n  \
-      \      pl_len = self.payload_len_in_bits\n        if len(in0) < ac_len + pl_len:\n\
-      \            return 0\n        if len(out0) < pl_len:\n            return 0\n\
-      \        n_errors = np.count_nonzero(in0[:ac_len] != self.access_code)\n   \
-      \     if n_errors > self.max_errors:\n            self.consume(0, 1)  # N\xE3\
-      o \xE9 o mais otimizado. :D\n            return 0\n        self.consume(0, ac_len\
-      \ + pl_len)\n        out0[:pl_len] = in0[ac_len: ac_len + pl_len]\n        self.add_item_tag(0,\
+      \        self.threshold = threshold\n\n    def general_work(self, input_items,\
+      \ output_items):\n        in0 = input_items[0]\n        out0 = output_items[0]\n\
+      \        ac_len = self.access_code.size\n        pl_len = self.payload_len_in_bits\n\
+      \        if len(in0) < ac_len + pl_len:\n            return 0\n        if len(out0)\
+      \ < pl_len:\n            return 0\n        n_errors = np.count_nonzero((in0[:ac_len]\
+      \ >= self.threshold).astype(int) != self.access_code)\n        if n_errors >\
+      \ self.max_errors:\n            self.consume(0, 1)  # N\xE3o \xE9 o mais otimizado.\
+      \ :D\n            return 0\n        self.consume(0, ac_len + pl_len)\n     \
+      \   out0[:pl_len] = in0[ac_len: ac_len + pl_len]\n        self.add_item_tag(0,\
       \ self.nitems_written(0), self.tag_key, pmt.from_long(pl_len))\n        return\
       \ pl_len\n\n\n"
     access_code: access_code
@@ -674,10 +675,12 @@ blocks:
     minoutbuf: '0'
     payload_len_in_bits: N
     tag_key: '"quadro"'
+    threshold: '0.5'
   states:
     _io_cache: ('Find Access Code', 'blk', [('access_code', "''"), ('payload_len_in_bits',
-      '0'), ('tag_key', "''"), ('max_errors', '0')], [('0', 'float', 1)], [('0', 'float',
-      1)], '', ['access_code', 'max_errors', 'payload_len_in_bits', 'tag_key'])
+      '0'), ('tag_key', "''"), ('max_errors', '0'), ('threshold', '0.5')], [('0',
+      'float', 1)], [('0', 'float', 1)], '', ['access_code', 'max_errors', 'payload_len_in_bits',
+      'tag_key', 'threshold'])
     bus_sink: false
     bus_source: false
     bus_structure: null
