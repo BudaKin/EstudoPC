@@ -331,9 +331,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: 'constellation_qpsk() tem |z| = 2;
-
-      o Costas espera amplitude unitaria'
+    comment: ''
     const: '0.5'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -343,7 +341,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [888, 528.0]
+    coordinate: [624, 544.0]
     rotation: 0
     state: enabled
 - name: blocks_pack_k_bits_bb_0
@@ -359,7 +357,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2232, 400.0]
+    coordinate: [1440, 360.0]
     rotation: 0
     state: enabled
 - name: digital_constellation_soft_decoder_cf_0
@@ -376,7 +374,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1264, 408.0]
+    coordinate: [952, 512.0]
     rotation: 0
     state: enabled
 - name: digital_costas_loop_cc_0
@@ -394,7 +392,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1072, 496.0]
+    coordinate: [712, 328.0]
     rotation: 0
     state: enabled
 - name: digital_symbol_sync_xx_0
@@ -421,7 +419,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [696, 344.0]
+    coordinate: [360, 344.0]
     rotation: 0
     state: true
 - name: epy_block_0_0
@@ -494,7 +492,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1512, 352.0]
+    coordinate: [1024, 344.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_decoder_0
@@ -515,7 +513,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1888, 368.0]
+    coordinate: [1240, 448.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -547,7 +545,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [328, 392.0]
+    coordinate: [160, 392.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -565,7 +563,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2584, 392.0]
+    coordinate: [1584, 352.0]
     rotation: 0
     state: enabled
 - name: osmosdr_source_0
@@ -922,7 +920,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 320.0]
+    coordinate: [72, 584.0]
     rotation: 0
     state: enabled
 - name: qtgui_eye_sink_x_0
@@ -1018,7 +1016,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [552, 512.0]
+    coordinate: [360, 520.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_1
@@ -1047,7 +1045,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1264, 200.0]
+    coordinate: [960, 192.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0_0
@@ -1144,7 +1142,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [552, 264.0]
+    coordinate: [360, 248.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_0_0_0
@@ -1241,7 +1239,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1896, 256.0]
+    coordinate: [1240, 240.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -1278,6 +1276,32 @@ blocks:
     coordinate: [544, 68.0]
     rotation: 0
     state: true
+- name: virtual_sink_0
+  id: virtual_sink
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: rx_signal
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [336, 664.0]
+    rotation: 0
+    state: enabled
+- name: virtual_source_1
+  id: virtual_source
+  parameters:
+    alias: ''
+    comment: ''
+    stream_id: rx_signal
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [0, 400.0]
+    rotation: 0
+    state: enabled
 
 connections:
 - [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
@@ -1292,7 +1316,8 @@ connections:
 - [interp_fir_filter_xxx_1, '0', digital_symbol_sync_xx_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_eye_sink_x_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_time_sink_x_0_0, '0']
-- [osmosdr_source_0, '0', interp_fir_filter_xxx_1, '0']
+- [osmosdr_source_0, '0', virtual_sink_0, '0']
+- [virtual_source_1, '0', interp_fir_filter_xxx_1, '0']
 
 metadata:
   file_format: 1

@@ -340,7 +340,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1376, 416.0]
+    coordinate: [672, 424.0]
     rotation: 0
     state: enabled
 - name: blocks_file_source_0
@@ -378,7 +378,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1408, 264.0]
+    coordinate: [856, 304.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_mux_0
@@ -397,7 +397,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1056, 352.0]
+    coordinate: [464, 368.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_to_tagged_stream_0
@@ -416,7 +416,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [448, 328.0]
+    coordinate: [152, 376.0]
     rotation: 0
     state: true
 - name: blocks_throttle2_0
@@ -437,7 +437,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1216, 256.0]
+    coordinate: [664, 296.0]
     rotation: 0
     state: enabled
 - name: blocks_unpack_k_bits_bb_0
@@ -453,7 +453,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [208, 336.0]
+    coordinate: [56, 480.0]
     rotation: 0
     state: true
 - name: blocks_unpack_k_bits_bb_0_0
@@ -469,7 +469,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [864, 248.0]
+    coordinate: [288, 224.0]
     rotation: 0
     state: true
 - name: blocks_vector_source_x_0
@@ -489,7 +489,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [608, 216.0]
+    coordinate: [0, 160.0]
     rotation: 0
     state: enabled
 - name: digital_constellation_encoder_bc_0
@@ -505,7 +505,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1560, 264.0]
+    coordinate: [984, 304.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_encoder_0
@@ -524,7 +524,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [760, 360.0]
+    coordinate: [288, 456.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -556,7 +556,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1776, 256.0]
+    coordinate: [1200, 296.0]
     rotation: 0
     state: enabled
 - name: osmosdr_sink_0
@@ -817,7 +817,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1888, 584.0]
+    coordinate: [1232, 488.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_0
@@ -846,7 +846,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2096, 152.0]
+    coordinate: [1440, 232.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0
@@ -943,7 +943,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1680, 400.0]
+    coordinate: [840, 408.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -990,7 +990,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2112, 368.0]
+    coordinate: [1456, 400.0]
     rotation: 0
     state: enabled
 - name: virtual_source_1
@@ -1003,7 +1003,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1624, 656.0]
+    coordinate: [976, 560.0]
     rotation: 0
     state: enabled
 

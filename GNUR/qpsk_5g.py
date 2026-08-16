@@ -10,14 +10,11 @@
 
 from PyQt5 import Qt
 from gnuradio import qtgui
-from PyQt5 import QtCore
 from gnuradio import blocks
-import pmt
-from gnuradio import channels
-from gnuradio.filter import firdes
 from gnuradio import digital
 from gnuradio import filter
 from gnuradio import fec
+from gnuradio.filter import firdes
 from gnuradio import gr
 from gnuradio.fft import window
 import sys
@@ -28,6 +25,8 @@ from gnuradio.eng_arg import eng_float, intx
 from gnuradio import eng_notation
 from gnuradio import network
 import numpy as np
+import osmosdr
+import time
 import qpsk_5g_epy_block_0_0 as epy_block_0_0  # embedded python block
 import sip
 import threading
@@ -85,9 +84,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.qpsk = qpsk = digital.constellation_qpsk().base()
         self.qpsk.set_npwr(1.0)
         self.payload_len = payload_len = 1
-        self.noise_voltage = noise_voltage = 0
-        self.freq_offset = freq_offset = 0.0
-        self.epsilon = epsilon = 1.0
         self.access_code = access_code = "11100001010110101110100010010011"
         self.PC_enc = PC_enc = fec.polar_encoder.make(N,K, frozen_pos, frozen_val, False)
         self.PC_dec = PC_dec = fec.polar_decoder_sc.make(N,K, frozen_pos, frozen_val)
@@ -114,27 +110,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.tabs.addTab(self.tabs_widget_2, 'Receptor')
         self.top_grid_layout.addWidget(self.tabs, 3, 0, 20, 1)
         for r in range(3, 23):
-            self.top_grid_layout.setRowStretch(r, 1)
-        for c in range(0, 1):
-            self.top_grid_layout.setColumnStretch(c, 1)
-        self._noise_voltage_range = qtgui.Range(0.0, 10.0, 0.01, 0, 200)
-        self._noise_voltage_win = qtgui.RangeWidget(self._noise_voltage_range, self.set_noise_voltage, "'noise_voltage'", "eng_slider", float, QtCore.Qt.Horizontal)
-        self.top_grid_layout.addWidget(self._noise_voltage_win, 0, 0, 1, 1)
-        for r in range(0, 1):
-            self.top_grid_layout.setRowStretch(r, 1)
-        for c in range(0, 1):
-            self.top_grid_layout.setColumnStretch(c, 1)
-        self._freq_offset_range = qtgui.Range(-0.002, 0.002, 0.00001, 0.0, 200)
-        self._freq_offset_win = qtgui.RangeWidget(self._freq_offset_range, self.set_freq_offset, "'freq_offset'", "eng_slider", float, QtCore.Qt.Horizontal)
-        self.top_grid_layout.addWidget(self._freq_offset_win, 2, 0, 1, 1)
-        for r in range(2, 3):
-            self.top_grid_layout.setRowStretch(r, 1)
-        for c in range(0, 1):
-            self.top_grid_layout.setColumnStretch(c, 1)
-        self._epsilon_range = qtgui.Range(0.99, 1.01, 0.0001, 1.0, 200)
-        self._epsilon_win = qtgui.RangeWidget(self._epsilon_range, self.set_epsilon, "'epsilon'", "eng_slider", float, QtCore.Qt.Horizontal)
-        self.top_grid_layout.addWidget(self._epsilon_win, 1, 0, 1, 1)
-        for r in range(1, 2):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 1):
             self.top_grid_layout.setColumnStretch(c, 1)
@@ -245,58 +220,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             self.tabs_grid_layout_2.setRowStretch(r, 1)
         for c in range(0, 1):
             self.tabs_grid_layout_2.setColumnStretch(c, 1)
-        self.qtgui_time_sink_x_0 = qtgui.time_sink_f(
-            1024, #size
-            samp_rate, #samp_rate
-            "", #name
-            1, #number of inputs
-            None # parent
-        )
-        self.qtgui_time_sink_x_0.set_update_time(0.10)
-        self.qtgui_time_sink_x_0.set_y_axis(-0.5, 1.5)
-
-        self.qtgui_time_sink_x_0.set_y_label('Amplitude', "")
-
-        self.qtgui_time_sink_x_0.enable_tags(True)
-        self.qtgui_time_sink_x_0.set_trigger_mode(qtgui.TRIG_MODE_TAG, qtgui.TRIG_SLOPE_POS, 0.0, 0, 0, "quadro")
-        self.qtgui_time_sink_x_0.enable_autoscale(False)
-        self.qtgui_time_sink_x_0.enable_grid(False)
-        self.qtgui_time_sink_x_0.enable_axis_labels(True)
-        self.qtgui_time_sink_x_0.enable_control_panel(False)
-        self.qtgui_time_sink_x_0.enable_stem_plot(False)
-
-
-        labels = ['Signal 1', 'Signal 2', 'Signal 3', 'Signal 4', 'Signal 5',
-            'Signal 6', 'Signal 7', 'Signal 8', 'Signal 9', 'Signal 10']
-        widths = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        colors = ['blue', 'red', 'green', 'black', 'cyan',
-            'magenta', 'yellow', 'dark red', 'dark green', 'dark blue']
-        alphas = [1.0, 1.0, 1.0, 1.0, 1.0,
-            1.0, 1.0, 1.0, 1.0, 1.0]
-        styles = [1, 1, 1, 1, 1,
-            1, 1, 1, 1, 1]
-        markers = [-1, -1, -1, -1, -1,
-            -1, -1, -1, -1, -1]
-
-
-        for i in range(1):
-            if len(labels[i]) == 0:
-                self.qtgui_time_sink_x_0.set_line_label(i, "Data {0}".format(i))
-            else:
-                self.qtgui_time_sink_x_0.set_line_label(i, labels[i])
-            self.qtgui_time_sink_x_0.set_line_width(i, widths[i])
-            self.qtgui_time_sink_x_0.set_line_color(i, colors[i])
-            self.qtgui_time_sink_x_0.set_line_style(i, styles[i])
-            self.qtgui_time_sink_x_0.set_line_marker(i, markers[i])
-            self.qtgui_time_sink_x_0.set_line_alpha(i, alphas[i])
-
-        self._qtgui_time_sink_x_0_win = sip.wrapinstance(self.qtgui_time_sink_x_0.qwidget(), Qt.QWidget)
-        self.tabs_grid_layout_0.addWidget(self._qtgui_time_sink_x_0_win, 0, 0, 1, 1)
-        for r in range(0, 1):
-            self.tabs_grid_layout_0.setRowStretch(r, 1)
-        for c in range(0, 1):
-            self.tabs_grid_layout_0.setColumnStretch(c, 1)
         self.qtgui_sink_x_1 = qtgui.sink_c(
             1024, #fftsize
             window.WIN_BLACKMAN_hARRIS, #wintype
@@ -319,50 +242,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             self.tabs_grid_layout_2.setRowStretch(r, 1)
         for c in range(0, 2):
             self.tabs_grid_layout_2.setColumnStretch(c, 1)
-        self.qtgui_sink_x_0_0 = qtgui.sink_c(
-            1024, #fftsize
-            window.WIN_BLACKMAN_hARRIS, #wintype
-            0, #fc
-            samp_rate, #bw
-            "", #name
-            True, #plotfreq
-            True, #plotwaterfall
-            True, #plottime
-            True, #plotconst
-            None # parent
-        )
-        self.qtgui_sink_x_0_0.set_update_time(1.0/10)
-        self._qtgui_sink_x_0_0_win = sip.wrapinstance(self.qtgui_sink_x_0_0.qwidget(), Qt.QWidget)
-
-        self.qtgui_sink_x_0_0.enable_rf_freq(False)
-
-        self.tabs_grid_layout_1.addWidget(self._qtgui_sink_x_0_0_win, 1, 1, 1, 1)
-        for r in range(1, 2):
-            self.tabs_grid_layout_1.setRowStretch(r, 1)
-        for c in range(1, 2):
-            self.tabs_grid_layout_1.setColumnStretch(c, 1)
-        self.qtgui_sink_x_0 = qtgui.sink_c(
-            1024, #fftsize
-            window.WIN_BLACKMAN_hARRIS, #wintype
-            0, #fc
-            samp_rate, #bw
-            "teste", #name
-            True, #plotfreq
-            True, #plotwaterfall
-            True, #plottime
-            True, #plotconst
-            None # parent
-        )
-        self.qtgui_sink_x_0.set_update_time(1.0/10)
-        self._qtgui_sink_x_0_win = sip.wrapinstance(self.qtgui_sink_x_0.qwidget(), Qt.QWidget)
-
-        self.qtgui_sink_x_0.enable_rf_freq(False)
-
-        self.tabs_grid_layout_0.addWidget(self._qtgui_sink_x_0_win, 1, 0, 1, 1)
-        for r in range(1, 2):
-            self.tabs_grid_layout_0.setRowStretch(r, 1)
-        for c in range(0, 1):
-            self.tabs_grid_layout_0.setColumnStretch(c, 1)
         self.qtgui_eye_sink_x_0 = qtgui.eye_sink_c(
             (100*sps), #size
             samp_rate, #samp_rate
@@ -417,14 +296,26 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             self.tabs_grid_layout_2.setRowStretch(r, 1)
         for c in range(1, 2):
             self.tabs_grid_layout_2.setColumnStretch(c, 1)
+        self.osmosdr_source_0 = osmosdr.source(
+            args="numchan=" + str(1) + " " + ""
+        )
+        self.osmosdr_source_0.set_time_unknown_pps(osmosdr.time_spec_t())
+        self.osmosdr_source_0.set_sample_rate(samp_rate)
+        self.osmosdr_source_0.set_center_freq(100e6, 0)
+        self.osmosdr_source_0.set_freq_corr(0, 0)
+        self.osmosdr_source_0.set_dc_offset_mode(0, 0)
+        self.osmosdr_source_0.set_iq_balance_mode(0, 0)
+        self.osmosdr_source_0.set_gain_mode(False, 0)
+        self.osmosdr_source_0.set_gain(10, 0)
+        self.osmosdr_source_0.set_if_gain(20, 0)
+        self.osmosdr_source_0.set_bb_gain(20, 0)
+        self.osmosdr_source_0.set_antenna('', 0)
+        self.osmosdr_source_0.set_bandwidth(0, 0)
         self.network_tcp_sink_0 = network.tcp_sink(gr.sizeof_char, 1, '127.0.0.1', 2000,2)
         self.interp_fir_filter_xxx_1 = filter.interp_fir_filter_ccc(1, taps/sps)
         self.interp_fir_filter_xxx_1.declare_sample_delay(0)
-        self.interp_fir_filter_xxx_0 = filter.interp_fir_filter_ccc(sps, taps)
-        self.interp_fir_filter_xxx_0.declare_sample_delay(0)
-        self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
         self.fec_extended_tagged_decoder_0 = self.fec_extended_tagged_decoder_0 = fec_extended_tagged_decoder_0 = fec.extended_tagged_decoder(decoder_obj_list=PC_dec, ann=None, puncpat='11', integration_period=10000, lentagname="quadro", mtu=1500)
-        self.epy_block_0_0 = epy_block_0_0.blk(access_code=access_code, payload_len_in_bits=N, tag_key="quadro", threshold=0.85)
+        self.epy_block_0_0 = epy_block_0_0.blk(access_code=access_code, payload_len_in_bits=N, tag_key="quadro", threshold=0.9)
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_cc(
             digital.TED_GARDNER,
             sps,
@@ -437,59 +328,28 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             digital.IR_MMSE_8TAP,
             128,
             [])
-        self.digital_costas_loop_cc_0 = digital.costas_loop_cc((2*np.pi / 100), 4, False)
+        self.digital_costas_loop_cc_0 = digital.costas_loop_cc((2*np.pi/200), 4, False)
         self.digital_constellation_soft_decoder_cf_0 = digital.constellation_soft_decoder_cf(qpsk, -1)
-        self.digital_constellation_encoder_bc_0 = digital.constellation_encoder_bc(qpsk)
-        self.channels_channel_model_0 = channels.channel_model(
-            noise_voltage=noise_voltage,
-            frequency_offset=freq_offset,
-            epsilon=epsilon,
-            taps=[1.0],
-            noise_seed=0,
-            block_tags=True)
-        self.blocks_vector_source_x_0 = blocks.vector_source_b((0xE1, 0x5A, 0xE8, 0x93), True, 1, [])
-        self.blocks_unpack_k_bits_bb_0_0 = blocks.unpack_k_bits_bb(8)
-        self.blocks_unpack_k_bits_bb_0 = blocks.unpack_k_bits_bb(8)
-        self.blocks_throttle2_0 = blocks.throttle( gr.sizeof_char*1, bit_rate, True, 0 if "auto" == "auto" else max( int(float(0.1) * bit_rate) if "auto" == "time" else int(0.1), 1) )
-        self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, K, "quadro")
-        self.blocks_stream_mux_0 = blocks.stream_mux(gr.sizeof_char*1, (32, N))
-        self.blocks_pack_k_bits_bb_1 = blocks.pack_k_bits_bb(2)
         self.blocks_pack_k_bits_bb_0 = blocks.pack_k_bits_bb(8)
-        self.blocks_file_source_0 = blocks.file_source(gr.sizeof_char*1, 'alice.txt', True, 0, 0)
-        self.blocks_file_source_0.set_begin_tag(pmt.PMT_NIL)
-        self.blocks_char_to_float_0 = blocks.char_to_float(1, 1)
+        self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(0.5)
 
 
         ##################################################
         # Connections
         ##################################################
-        self.connect((self.blocks_char_to_float_0, 0), (self.qtgui_time_sink_x_0, 0))
-        self.connect((self.blocks_file_source_0, 0), (self.blocks_unpack_k_bits_bb_0, 0))
+        self.connect((self.blocks_multiply_const_vxx_0, 0), (self.digital_costas_loop_cc_0, 0))
         self.connect((self.blocks_pack_k_bits_bb_0, 0), (self.network_tcp_sink_0, 0))
-        self.connect((self.blocks_pack_k_bits_bb_1, 0), (self.digital_constellation_encoder_bc_0, 0))
-        self.connect((self.blocks_stream_mux_0, 0), (self.blocks_char_to_float_0, 0))
-        self.connect((self.blocks_stream_mux_0, 0), (self.blocks_throttle2_0, 0))
-        self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.fec_extended_tagged_encoder_0, 0))
-        self.connect((self.blocks_throttle2_0, 0), (self.blocks_pack_k_bits_bb_1, 0))
-        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.blocks_stream_to_tagged_stream_0, 0))
-        self.connect((self.blocks_unpack_k_bits_bb_0_0, 0), (self.blocks_stream_mux_0, 0))
-        self.connect((self.blocks_vector_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0_0, 0))
-        self.connect((self.channels_channel_model_0, 0), (self.interp_fir_filter_xxx_1, 0))
-        self.connect((self.channels_channel_model_0, 0), (self.qtgui_sink_x_0_0, 0))
-        self.connect((self.digital_constellation_encoder_bc_0, 0), (self.interp_fir_filter_xxx_0, 0))
         self.connect((self.digital_constellation_soft_decoder_cf_0, 0), (self.epy_block_0_0, 0))
         self.connect((self.digital_costas_loop_cc_0, 0), (self.digital_constellation_soft_decoder_cf_0, 0))
         self.connect((self.digital_costas_loop_cc_0, 0), (self.qtgui_sink_x_1, 0))
-        self.connect((self.digital_symbol_sync_xx_0, 0), (self.digital_costas_loop_cc_0, 0))
+        self.connect((self.digital_symbol_sync_xx_0, 0), (self.blocks_multiply_const_vxx_0, 0))
         self.connect((self.epy_block_0_0, 0), (self.fec_extended_tagged_decoder_0, 0))
         self.connect((self.epy_block_0_0, 0), (self.qtgui_time_sink_x_0_0_0, 0))
         self.connect((self.fec_extended_tagged_decoder_0, 0), (self.blocks_pack_k_bits_bb_0, 0))
-        self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_stream_mux_0, 1))
-        self.connect((self.interp_fir_filter_xxx_0, 0), (self.channels_channel_model_0, 0))
-        self.connect((self.interp_fir_filter_xxx_0, 0), (self.qtgui_sink_x_0, 0))
         self.connect((self.interp_fir_filter_xxx_1, 0), (self.digital_symbol_sync_xx_0, 0))
         self.connect((self.interp_fir_filter_xxx_1, 0), (self.qtgui_eye_sink_x_0, 0))
         self.connect((self.interp_fir_filter_xxx_1, 0), (self.qtgui_time_sink_x_0_0, 0))
+        self.connect((self.osmosdr_source_0, 0), (self.interp_fir_filter_xxx_1, 0))
 
 
     def closeEvent(self, event):
@@ -506,7 +366,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
     def set_bit_rate(self, bit_rate):
         self.bit_rate = bit_rate
         self.set_baud_rate(self.bit_rate / 1)
-        self.blocks_throttle2_0.set_sample_rate(self.bit_rate)
 
     def get_sps(self):
         return self.sps
@@ -534,10 +393,8 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
     def set_samp_rate(self, samp_rate):
         self.samp_rate = samp_rate
         self.set_rrc_filter_taps(firdes.root_raised_cosine(self.sps, self.samp_rate, self.baud_rate, 0.25, (11*self.sps)))
+        self.osmosdr_source_0.set_sample_rate(self.samp_rate)
         self.qtgui_eye_sink_x_0.set_samp_rate(self.samp_rate)
-        self.qtgui_sink_x_0.set_frequency_range(0, self.samp_rate)
-        self.qtgui_sink_x_0_0.set_frequency_range(0, self.samp_rate)
-        self.qtgui_time_sink_x_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_0_0.set_samp_rate(self.samp_rate)
         self.qtgui_time_sink_x_0_0_0.set_samp_rate(self.samp_rate)
 
@@ -555,7 +412,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.N = N
         self.set_frozen_pos(np.sort(self.RelSeq[self.RelSeq < self.N][:self.N-self.K]))
         self.set_frozen_val(np.zeros(self.N-self.K, dtype=int))
-        self.epy_block_0_0.payload_len_in_bits = self.N
 
     def get_K(self):
         return self.K
@@ -564,8 +420,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.K = K
         self.set_frozen_pos(np.sort(self.RelSeq[self.RelSeq < self.N][:self.N-self.K]))
         self.set_frozen_val(np.zeros(self.N-self.K, dtype=int))
-        self.blocks_stream_to_tagged_stream_0.set_packet_len(self.K)
-        self.blocks_stream_to_tagged_stream_0.set_packet_len_pmt(self.K)
 
     def get_rrc_filter_taps(self):
         return self.rrc_filter_taps
@@ -591,7 +445,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
 
     def set_taps(self, taps):
         self.taps = taps
-        self.interp_fir_filter_xxx_0.set_taps(self.taps)
         self.interp_fir_filter_xxx_1.set_taps(self.taps/self.sps)
 
     def get_sync_len(self):
@@ -605,7 +458,6 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
 
     def set_qpsk(self, qpsk):
         self.qpsk = qpsk
-        self.digital_constellation_encoder_bc_0.set_constellation(self.qpsk)
         self.digital_constellation_soft_decoder_cf_0.set_constellation(self.qpsk)
 
     def get_payload_len(self):
@@ -614,33 +466,11 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
     def set_payload_len(self, payload_len):
         self.payload_len = payload_len
 
-    def get_noise_voltage(self):
-        return self.noise_voltage
-
-    def set_noise_voltage(self, noise_voltage):
-        self.noise_voltage = noise_voltage
-        self.channels_channel_model_0.set_noise_voltage(self.noise_voltage)
-
-    def get_freq_offset(self):
-        return self.freq_offset
-
-    def set_freq_offset(self, freq_offset):
-        self.freq_offset = freq_offset
-        self.channels_channel_model_0.set_frequency_offset(self.freq_offset)
-
-    def get_epsilon(self):
-        return self.epsilon
-
-    def set_epsilon(self, epsilon):
-        self.epsilon = epsilon
-        self.channels_channel_model_0.set_timing_offset(self.epsilon)
-
     def get_access_code(self):
         return self.access_code
 
     def set_access_code(self, access_code):
         self.access_code = access_code
-        self.epy_block_0_0.access_code = self.access_code
 
     def get_PC_enc(self):
         return self.PC_enc
