@@ -86,6 +86,8 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.qpsk.set_npwr(1.0)
         self.payload_len = payload_len = 1
         self.noise_voltage = noise_voltage = 0
+        self.freq_offset = freq_offset = 0.0
+        self.epsilon = epsilon = 1.0
         self.access_code = access_code = "11100001010110101110100010010011"
         self.PC_enc = PC_enc = fec.polar_encoder.make(N,K, frozen_pos, frozen_val, False)
         self.PC_dec = PC_dec = fec.polar_decoder_sc.make(N,K, frozen_pos, frozen_val)
@@ -110,15 +112,29 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.tabs_grid_layout_2 = Qt.QGridLayout()
         self.tabs_layout_2.addLayout(self.tabs_grid_layout_2)
         self.tabs.addTab(self.tabs_widget_2, 'Receptor')
-        self.top_grid_layout.addWidget(self.tabs, 1, 0, 20, 1)
-        for r in range(1, 21):
+        self.top_grid_layout.addWidget(self.tabs, 3, 0, 20, 1)
+        for r in range(3, 23):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 1):
             self.top_grid_layout.setColumnStretch(c, 1)
-        self._noise_voltage_range = qtgui.Range(0.0, 2.0, 0.01, 0, 200)
-        self._noise_voltage_win = qtgui.RangeWidget(self._noise_voltage_range, self.set_noise_voltage, "'noise_voltage'", "slider", float, QtCore.Qt.Horizontal)
+        self._noise_voltage_range = qtgui.Range(0.0, 10.0, 0.01, 0, 200)
+        self._noise_voltage_win = qtgui.RangeWidget(self._noise_voltage_range, self.set_noise_voltage, "'noise_voltage'", "eng_slider", float, QtCore.Qt.Horizontal)
         self.top_grid_layout.addWidget(self._noise_voltage_win, 0, 0, 1, 1)
         for r in range(0, 1):
+            self.top_grid_layout.setRowStretch(r, 1)
+        for c in range(0, 1):
+            self.top_grid_layout.setColumnStretch(c, 1)
+        self._freq_offset_range = qtgui.Range(-0.002, 0.002, 0.00001, 0.0, 200)
+        self._freq_offset_win = qtgui.RangeWidget(self._freq_offset_range, self.set_freq_offset, "'freq_offset'", "eng_slider", float, QtCore.Qt.Horizontal)
+        self.top_grid_layout.addWidget(self._freq_offset_win, 2, 0, 1, 1)
+        for r in range(2, 3):
+            self.top_grid_layout.setRowStretch(r, 1)
+        for c in range(0, 1):
+            self.top_grid_layout.setColumnStretch(c, 1)
+        self._epsilon_range = qtgui.Range(0.99, 1.01, 0.0001, 1.0, 200)
+        self._epsilon_win = qtgui.RangeWidget(self._epsilon_range, self.set_epsilon, "'epsilon'", "eng_slider", float, QtCore.Qt.Horizontal)
+        self.top_grid_layout.addWidget(self._epsilon_win, 1, 0, 1, 1)
+        for r in range(1, 2):
             self.top_grid_layout.setRowStretch(r, 1)
         for c in range(0, 1):
             self.top_grid_layout.setColumnStretch(c, 1)
@@ -130,7 +146,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             None # parent
         )
         self.qtgui_time_sink_x_0_0_0.set_update_time(0.10)
-        self.qtgui_time_sink_x_0_0_0.set_y_axis(-2.0, 2.0)
+        self.qtgui_time_sink_x_0_0_0.set_y_axis(-10.0, 10.0)
 
         self.qtgui_time_sink_x_0_0_0.set_y_label('Amplitude', "")
 
@@ -330,7 +346,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             window.WIN_BLACKMAN_hARRIS, #wintype
             0, #fc
             samp_rate, #bw
-            "", #name
+            "teste", #name
             True, #plotfreq
             True, #plotwaterfall
             True, #plottime
@@ -408,7 +424,7 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
         self.interp_fir_filter_xxx_0.declare_sample_delay(0)
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
         self.fec_extended_tagged_decoder_0 = self.fec_extended_tagged_decoder_0 = fec_extended_tagged_decoder_0 = fec.extended_tagged_decoder(decoder_obj_list=PC_dec, ann=None, puncpat='11', integration_period=10000, lentagname="quadro", mtu=1500)
-        self.epy_block_0_0 = epy_block_0_0.blk(access_code=access_code, payload_len_in_bits=N, tag_key="quadro", max_errors=3, threshold=0.5)
+        self.epy_block_0_0 = epy_block_0_0.blk(access_code=access_code, payload_len_in_bits=N, tag_key="quadro", threshold=0.85)
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_cc(
             digital.TED_GARDNER,
             sps,
@@ -421,13 +437,13 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
             digital.IR_MMSE_8TAP,
             128,
             [])
-        self.digital_costas_loop_cc_0 = digital.costas_loop_cc((np.pi / 100), 4, False)
+        self.digital_costas_loop_cc_0 = digital.costas_loop_cc((2*np.pi / 100), 4, False)
         self.digital_constellation_soft_decoder_cf_0 = digital.constellation_soft_decoder_cf(qpsk, -1)
         self.digital_constellation_encoder_bc_0 = digital.constellation_encoder_bc(qpsk)
         self.channels_channel_model_0 = channels.channel_model(
             noise_voltage=noise_voltage,
-            frequency_offset=0.0,
-            epsilon=1.00,
+            frequency_offset=freq_offset,
+            epsilon=epsilon,
             taps=[1.0],
             noise_seed=0,
             block_tags=True)
@@ -604,6 +620,20 @@ class qpsk_5g(gr.top_block, Qt.QWidget):
     def set_noise_voltage(self, noise_voltage):
         self.noise_voltage = noise_voltage
         self.channels_channel_model_0.set_noise_voltage(self.noise_voltage)
+
+    def get_freq_offset(self):
+        return self.freq_offset
+
+    def set_freq_offset(self, freq_offset):
+        self.freq_offset = freq_offset
+        self.channels_channel_model_0.set_frequency_offset(self.freq_offset)
+
+    def get_epsilon(self):
+        return self.epsilon
+
+    def set_epsilon(self, epsilon):
+        self.epsilon = epsilon
+        self.channels_channel_model_0.set_timing_offset(self.epsilon)
 
     def get_access_code(self):
         return self.access_code
