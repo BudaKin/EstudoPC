@@ -205,6 +205,18 @@ blocks:
     coordinate: [544, 4.0]
     rotation: 0
     state: true
+- name: freq
+  id: variable
+  parameters:
+    comment: ''
+    value: 670e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [672, 88.0]
+    rotation: 0
+    state: enabled
 - name: frozen_pos
   id: variable
   parameters:
@@ -294,7 +306,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '50'
+    value: '4'
   states:
     bus_sink: false
     bus_source: false
@@ -341,7 +353,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [624, 544.0]
+    coordinate: [752, 544.0]
     rotation: 0
     state: enabled
 - name: blocks_pack_k_bits_bb_0
@@ -357,7 +369,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1440, 360.0]
+    coordinate: [1568, 360.0]
     rotation: 0
     state: enabled
 - name: digital_constellation_soft_decoder_cf_0
@@ -374,7 +386,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [952, 512.0]
+    coordinate: [1080, 512.0]
     rotation: 0
     state: enabled
 - name: digital_costas_loop_cc_0
@@ -392,7 +404,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [712, 328.0]
+    coordinate: [840, 328.0]
     rotation: 0
     state: enabled
 - name: digital_symbol_sync_xx_0
@@ -419,7 +431,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 344.0]
+    coordinate: [488, 344.0]
     rotation: 0
     state: true
 - name: epy_block_0_0
@@ -492,7 +504,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1024, 344.0]
+    coordinate: [1152, 344.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_decoder_0
@@ -513,7 +525,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1240, 448.0]
+    coordinate: [1368, 448.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -526,7 +538,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [376, 4.0]
+    coordinate: [328, 8.0]
     rotation: 0
     state: true
 - name: interp_fir_filter_xxx_1
@@ -545,7 +557,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [160, 392.0]
+    coordinate: [288, 392.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -563,7 +575,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1584, 352.0]
+    coordinate: [1712, 352.0]
     rotation: 0
     state: enabled
 - name: osmosdr_source_0
@@ -603,8 +615,8 @@ blocks:
     ant7: ''
     ant8: ''
     ant9: ''
-    args: '""'
-    bb_gain0: '20'
+    args: rtl=0
+    bb_gain0: '0'
     bb_gain1: '20'
     bb_gain10: '20'
     bb_gain11: '20'
@@ -741,7 +753,7 @@ blocks:
     dc_offset_mode7: '0'
     dc_offset_mode8: '0'
     dc_offset_mode9: '0'
-    freq0: 100e6
+    freq0: freq
     freq1: 100e6
     freq10: 100e6
     freq11: 100e6
@@ -773,7 +785,7 @@ blocks:
     freq7: 100e6
     freq8: 100e6
     freq9: 100e6
-    gain0: '10'
+    gain0: '25'
     gain1: '10'
     gain10: '10'
     gain11: '10'
@@ -837,7 +849,7 @@ blocks:
     gain_mode7: 'False'
     gain_mode8: 'False'
     gain_mode9: 'False'
-    if_gain0: '20'
+    if_gain0: '0'
     if_gain1: '20'
     if_gain10: '20'
     if_gain11: '20'
@@ -920,7 +932,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [72, 584.0]
+    coordinate: [0, 312.0]
     rotation: 0
     state: enabled
 - name: qtgui_eye_sink_x_0
@@ -954,7 +966,7 @@ blocks:
     ctrlpanel: 'False'
     entags: 'True'
     grid: 'False'
-    gui_hint: tabs@2:0,1,1,1
+    gui_hint: tabs@1
     label1: Signal 1
     label10: Signal 10
     label2: Signal 2
@@ -1016,7 +1028,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 520.0]
+    coordinate: [488, 520.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_1
@@ -1028,7 +1040,7 @@ blocks:
     comment: ''
     fc: '0'
     fftsize: '1024'
-    gui_hint: tabs@2:1,0,1,2
+    gui_hint: tabs@0
     maxoutbuf: '0'
     minoutbuf: '0'
     name: '""'
@@ -1045,7 +1057,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [960, 192.0]
+    coordinate: [1088, 192.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0_0
@@ -1079,7 +1091,7 @@ blocks:
     ctrlpanel: 'False'
     entags: 'True'
     grid: 'False'
-    gui_hint: tabs@2:0,0,1,1
+    gui_hint: tabs@1
     label1: Signal 1
     label10: Signal 10
     label2: Signal 2
@@ -1142,7 +1154,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [360, 248.0]
+    coordinate: [488, 248.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_0_0_0
@@ -1176,7 +1188,7 @@ blocks:
     ctrlpanel: 'False'
     entags: 'True'
     grid: 'False'
-    gui_hint: tabs@2:0,2,1,1
+    gui_hint: tabs@0
     label1: Signal 1
     label10: Signal 10
     label2: Signal 2
@@ -1239,7 +1251,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1240, 240.0]
+    coordinate: [1368, 240.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -1248,8 +1260,8 @@ blocks:
     alias: ''
     comment: ''
     gui_hint: 3,0,20,1
-    label0: Transmissor
-    label1: Canal
+    label0: Receptor final
+    label1: Receptor inicial
     label10: Tab 10
     label11: Tab 11
     label12: Tab 12
@@ -1268,7 +1280,7 @@ blocks:
     label7: Tab 7
     label8: Tab 8
     label9: Tab 9
-    num_tabs: '3'
+    num_tabs: '2'
   states:
     bus_sink: false
     bus_source: false
@@ -1276,32 +1288,6 @@ blocks:
     coordinate: [544, 68.0]
     rotation: 0
     state: true
-- name: virtual_sink_0
-  id: virtual_sink
-  parameters:
-    alias: ''
-    comment: ''
-    stream_id: rx_signal
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [336, 664.0]
-    rotation: 0
-    state: enabled
-- name: virtual_source_1
-  id: virtual_source
-  parameters:
-    alias: ''
-    comment: ''
-    stream_id: rx_signal
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [0, 400.0]
-    rotation: 0
-    state: enabled
 
 connections:
 - [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
@@ -1316,8 +1302,7 @@ connections:
 - [interp_fir_filter_xxx_1, '0', digital_symbol_sync_xx_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_eye_sink_x_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_time_sink_x_0_0, '0']
-- [osmosdr_source_0, '0', virtual_sink_0, '0']
-- [virtual_source_1, '0', interp_fir_filter_xxx_1, '0']
+- [osmosdr_source_0, '0', interp_fir_filter_xxx_1, '0']
 
 metadata:
   file_format: 1
