@@ -238,7 +238,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1400, 152.0]
+    coordinate: [1648, 88.0]
     rotation: 0
     state: enabled
 - name: payload_len
@@ -338,6 +338,26 @@ blocks:
     coordinate: [624, 4.0]
     rotation: 0
     state: true
+- name: analog_agc_xx_0
+  id: analog_agc_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    gain: '1.0'
+    max_gain: '65536'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    rate: 1e-5
+    reference: '1.0'
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [520, 376.0]
+    rotation: 0
+    state: enabled
 - name: blocks_multiply_const_vxx_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -353,7 +373,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [752, 544.0]
+    coordinate: [1016, 400.0]
     rotation: 0
     state: enabled
 - name: blocks_pack_k_bits_bb_0
@@ -369,7 +389,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1568, 360.0]
+    coordinate: [1768, 360.0]
     rotation: 0
     state: enabled
 - name: digital_constellation_soft_decoder_cf_0
@@ -386,7 +406,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1080, 512.0]
+    coordinate: [1280, 512.0]
     rotation: 0
     state: enabled
 - name: digital_costas_loop_cc_0
@@ -404,7 +424,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [840, 328.0]
+    coordinate: [1056, 232.0]
     rotation: 0
     state: enabled
 - name: digital_symbol_sync_xx_0
@@ -431,7 +451,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [488, 344.0]
+    coordinate: [688, 344.0]
     rotation: 0
     state: true
 - name: epy_block_0_0
@@ -504,7 +524,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1152, 344.0]
+    coordinate: [1352, 344.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_decoder_0
@@ -525,7 +545,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1368, 448.0]
+    coordinate: [1568, 448.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -557,7 +577,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [288, 392.0]
+    coordinate: [248, 392.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -575,7 +595,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1712, 352.0]
+    coordinate: [1912, 352.0]
     rotation: 0
     state: enabled
 - name: osmosdr_source_0
@@ -1028,7 +1048,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [488, 520.0]
+    coordinate: [688, 520.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_1
@@ -1057,7 +1077,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1088, 192.0]
+    coordinate: [1288, 192.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0_0
@@ -1154,7 +1174,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [488, 248.0]
+    coordinate: [688, 248.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_0_0_0
@@ -1251,7 +1271,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1368, 240.0]
+    coordinate: [1568, 240.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -1290,6 +1310,7 @@ blocks:
     state: true
 
 connections:
+- [analog_agc_xx_0, '0', digital_symbol_sync_xx_0, '0']
 - [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
 - [blocks_pack_k_bits_bb_0, '0', network_tcp_sink_0, '0']
 - [digital_constellation_soft_decoder_cf_0, '0', epy_block_0_0, '0']
@@ -1299,7 +1320,7 @@ connections:
 - [epy_block_0_0, '0', fec_extended_tagged_decoder_0, '0']
 - [epy_block_0_0, '0', qtgui_time_sink_x_0_0_0, '0']
 - [fec_extended_tagged_decoder_0, '0', blocks_pack_k_bits_bb_0, '0']
-- [interp_fir_filter_xxx_1, '0', digital_symbol_sync_xx_0, '0']
+- [interp_fir_filter_xxx_1, '0', analog_agc_xx_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_eye_sink_x_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_time_sink_x_0_0, '0']
 - [osmosdr_source_0, '0', interp_fir_filter_xxx_1, '0']
