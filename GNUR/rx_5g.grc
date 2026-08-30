@@ -11,7 +11,7 @@ options:
     gen_linking: dynamic
     generate_options: qt_gui
     hier_block_src_path: '.:'
-    id: qpsk_5g
+    id: rx_5g
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -22,7 +22,7 @@ options:
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: QPSK - 5G
+    title: RX - QPSK - 5G
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -273,6 +273,27 @@ blocks:
     coordinate: [152, 4.0]
     rotation: 0
     state: true
+- name: rf_gain
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: ''
+    label: ''
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0'
+    step: '1'
+    stop: '50'
+    value: '30'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 532.0]
+    rotation: 0
+    state: enabled
 - name: rrc_filter_taps
   id: variable_rrc_filter_taps
   parameters:
@@ -306,7 +327,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '4'
+    value: '3'
   states:
     bus_sink: false
     bus_source: false
@@ -345,17 +366,17 @@ blocks:
     alias: ''
     comment: ''
     gain: '1.0'
-    max_gain: '65536'
+    max_gain: 1e3
     maxoutbuf: '0'
     minoutbuf: '0'
-    rate: 1e-5
+    rate: 1e-4
     reference: '1.0'
     type: complex
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [520, 376.0]
+    coordinate: [520, 364.0]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0
@@ -436,7 +457,7 @@ blocks:
     constellation: digital.constellation_bpsk().base()
     damping: '1.0'
     loop_bw: '0.045'
-    max_dev: '1.5'
+    max_dev: '0.01'
     maxoutbuf: '0'
     minoutbuf: '0'
     nfilters: '128'
@@ -451,7 +472,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [688, 344.0]
+    coordinate: [688, 332.0]
     rotation: 0
     state: true
 - name: epy_block_0_0
@@ -577,7 +598,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [248, 392.0]
+    coordinate: [296, 380.0]
     rotation: 0
     state: enabled
 - name: network_tcp_sink_0
@@ -805,7 +826,7 @@ blocks:
     freq7: 100e6
     freq8: 100e6
     freq9: 100e6
-    gain0: '25'
+    gain0: rf_gain
     gain1: '10'
     gain10: '10'
     gain11: '10'
@@ -952,7 +973,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 312.0]
+    coordinate: [56, 300.0]
     rotation: 0
     state: enabled
 - name: qtgui_eye_sink_x_0
@@ -1048,7 +1069,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [688, 520.0]
+    coordinate: [568, 524.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_1
@@ -1174,7 +1195,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [688, 248.0]
+    coordinate: [576, 220.0]
     rotation: 0
     state: true
 - name: qtgui_time_sink_x_0_0_0

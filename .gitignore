@@ -278,4 +278,13 @@ $RECYCLE.BIN/
 # Windows shortcuts
 *.lnk
 
+# Ignora todo o conteúdo dentro do diretório GNUR
+GNUR/*
+
+# Exceções apenas para os arquivos importantes
+!GNUR/alice.txt
+!GNUR/5gqpsk.grc
+!GNUR/rx_5g.grc
+!GNUR/tx_5g.grc
+
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,octave,linux,windows,visualstudiocode

@@ -11,7 +11,7 @@ options:
     gen_linking: dynamic
     generate_options: qt_gui
     hier_block_src_path: '.:'
-    id: qpsk_5g
+    id: tx_5g
     max_nouts: '0'
     output_language: python
     placement: (0,0)
@@ -22,7 +22,7 @@ options:
     run_options: prompt
     sizing_mode: fixed
     thread_safe_setters: ''
-    title: QPSK - 5G
+    title: TX - QPSK - 5G
     window_size: (1000,1000)
   states:
     bus_sink: false
@@ -241,6 +241,27 @@ blocks:
     coordinate: [1400, 152.0]
     rotation: 0
     state: enabled
+- name: iftxgain
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: ''
+    label: ''
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: int
+    start: '0'
+    step: '1'
+    stop: '47'
+    value: '30'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2120, 480.0]
+    rotation: 0
+    state: enabled
 - name: payload_len
   id: variable
   parameters:
@@ -273,6 +294,27 @@ blocks:
     coordinate: [152, 4.0]
     rotation: 0
     state: true
+- name: rftxgain
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: ''
+    label: ''
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: int
+    start: '0'
+    step: '30'
+    stop: '30'
+    value: '30'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2120, 320.0]
+    rotation: 0
+    state: enabled
 - name: rrc_filter_taps
   id: variable_rrc_filter_taps
   parameters:
@@ -306,7 +348,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '4'
+    value: '12'
   states:
     bus_sink: false
     bus_source: false
@@ -352,7 +394,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [672, 424.0]
+    coordinate: [1160, 424.0]
     rotation: 0
     state: enabled
 - name: blocks_file_source_0
@@ -374,9 +416,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [8, 312.0]
+    coordinate: [0, 368.0]
     rotation: 0
-    state: true
+    state: disabled
 - name: blocks_pack_k_bits_bb_1
   id: blocks_pack_k_bits_bb
   parameters:
@@ -390,7 +432,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [856, 304.0]
+    coordinate: [1344, 304.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_mux_0
@@ -409,7 +451,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [464, 368.0]
+    coordinate: [952, 368.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_to_tagged_stream_0
@@ -428,7 +470,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [152, 376.0]
+    coordinate: [504, 528.0]
     rotation: 0
     state: true
 - name: blocks_unpack_k_bits_bb_0
@@ -444,7 +486,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [56, 480.0]
+    coordinate: [320, 400.0]
     rotation: 0
     state: true
 - name: blocks_unpack_k_bits_bb_0_0
@@ -483,6 +525,26 @@ blocks:
     coordinate: [0, 160.0]
     rotation: 0
     state: enabled
+- name: blocks_vector_source_x_1
+  id: blocks_vector_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    repeat: 'True'
+    tags: '[]'
+    type: byte
+    vector: tuple(np.random.RandomState(seed=42).randint(0, 256, size=64, dtype=np.uint8))
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [64, 528.0]
+    rotation: 0
+    state: enabled
 - name: digital_constellation_encoder_bc_0
   id: digital_constellation_encoder_bc
   parameters:
@@ -496,7 +558,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [984, 304.0]
+    coordinate: [1472, 304.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_encoder_0
@@ -515,7 +577,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [288, 456.0]
+    coordinate: [624, 376.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -547,7 +609,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1200, 296.0]
+    coordinate: [1688, 296.0]
     rotation: 0
     state: enabled
 - name: osmosdr_sink_0
@@ -725,7 +787,7 @@ blocks:
     freq7: 100e6
     freq8: 100e6
     freq9: 100e6
-    gain0: '0'
+    gain0: rftxgain
     gain1: '10'
     gain10: '10'
     gain11: '10'
@@ -757,7 +819,7 @@ blocks:
     gain7: '10'
     gain8: '10'
     gain9: '10'
-    if_gain0: '30'
+    if_gain0: iftxgain
     if_gain1: '20'
     if_gain10: '20'
     if_gain11: '20'
@@ -808,7 +870,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1440, 368.0]
+    coordinate: [1928, 368.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_0
@@ -837,7 +899,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1440, 232.0]
+    coordinate: [1928, 232.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0
@@ -934,7 +996,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [840, 408.0]
+    coordinate: [1328, 408.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -982,6 +1044,7 @@ connections:
 - [blocks_unpack_k_bits_bb_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [blocks_unpack_k_bits_bb_0_0, '0', blocks_stream_mux_0, '0']
 - [blocks_vector_source_x_0, '0', blocks_unpack_k_bits_bb_0_0, '0']
+- [blocks_vector_source_x_1, '0', blocks_unpack_k_bits_bb_0, '0']
 - [digital_constellation_encoder_bc_0, '0', interp_fir_filter_xxx_0, '0']
 - [fec_extended_tagged_encoder_0, '0', blocks_stream_mux_0, '1']
 - [interp_fir_filter_xxx_0, '0', osmosdr_sink_0, '0']
