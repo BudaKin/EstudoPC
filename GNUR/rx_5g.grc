@@ -379,6 +379,24 @@ blocks:
     coordinate: [520, 364.0]
     rotation: 0
     state: enabled
+- name: blocks_file_sink_0
+  id: blocks_file_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    append: 'False'
+    comment: ''
+    file: alice_hat.txt
+    type: byte
+    unbuffered: 'True'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2160, 268.0]
+    rotation: 0
+    state: enabled
 - name: blocks_multiply_const_vxx_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -410,7 +428,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1768, 360.0]
+    coordinate: [2000, 364.0]
     rotation: 0
     state: enabled
 - name: digital_constellation_soft_decoder_cf_0
@@ -446,6 +464,24 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [1056, 232.0]
+    rotation: 0
+    state: enabled
+- name: digital_crc32_bb_0
+  id: digital_crc32_bb
+  parameters:
+    affinity: ''
+    alias: ''
+    check: 'True'
+    comment: ''
+    lengthtagname: '"quadro"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packed: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1800, 348.0]
     rotation: 0
     state: enabled
 - name: digital_symbol_sync_xx_0
@@ -607,7 +643,7 @@ blocks:
     addr: 127.0.0.1
     affinity: ''
     alias: ''
-    comment: Conecte usando `netcat localhost 2000`
+    comment: ''
     mode: '2'
     port: '2000'
     type: byte
@@ -616,9 +652,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1912, 352.0]
+    coordinate: [2144, 500.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: osmosdr_source_0
   id: osmosdr_source
   parameters:
@@ -1333,14 +1369,16 @@ blocks:
 connections:
 - [analog_agc_xx_0, '0', digital_symbol_sync_xx_0, '0']
 - [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
+- [blocks_pack_k_bits_bb_0, '0', blocks_file_sink_0, '0']
 - [blocks_pack_k_bits_bb_0, '0', network_tcp_sink_0, '0']
 - [digital_constellation_soft_decoder_cf_0, '0', epy_block_0_0, '0']
 - [digital_costas_loop_cc_0, '0', digital_constellation_soft_decoder_cf_0, '0']
 - [digital_costas_loop_cc_0, '0', qtgui_sink_x_1, '0']
+- [digital_crc32_bb_0, '0', blocks_pack_k_bits_bb_0, '0']
 - [digital_symbol_sync_xx_0, '0', blocks_multiply_const_vxx_0, '0']
 - [epy_block_0_0, '0', fec_extended_tagged_decoder_0, '0']
 - [epy_block_0_0, '0', qtgui_time_sink_x_0_0_0, '0']
-- [fec_extended_tagged_decoder_0, '0', blocks_pack_k_bits_bb_0, '0']
+- [fec_extended_tagged_decoder_0, '0', digital_crc32_bb_0, '0']
 - [interp_fir_filter_xxx_1, '0', analog_agc_xx_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_eye_sink_x_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_time_sink_x_0_0, '0']

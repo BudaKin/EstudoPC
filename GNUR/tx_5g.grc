@@ -380,6 +380,25 @@ blocks:
     coordinate: [624, 4.0]
     rotation: 0
     state: true
+- name: analog_random_uniform_source_x_0
+  id: analog_random_uniform_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maximum: '2'
+    maxoutbuf: '0'
+    minimum: '0'
+    minoutbuf: '0'
+    seed: '42'
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [40, 560.0]
+    rotation: 0
+    state: disabled
 - name: blocks_char_to_float_0
   id: blocks_char_to_float
   parameters:
@@ -409,16 +428,16 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
-    repeat: 'True'
+    repeat: 'False'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 368.0]
+    coordinate: [72, 232.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_pack_k_bits_bb_1
   id: blocks_pack_k_bits_bb
   parameters:
@@ -451,7 +470,26 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [952, 368.0]
+    coordinate: [936, 344.0]
+    rotation: 0
+    state: enabled
+- name: blocks_stream_mux_0_0
+  id: blocks_stream_mux
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    lengths: (2000, 151191, 2000)
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_inputs: '3'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [272, 240.0]
     rotation: 0
     state: enabled
 - name: blocks_stream_to_tagged_stream_0
@@ -463,14 +501,14 @@ blocks:
     len_tag_key: '"quadro"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: K
+    packet_len: K-32
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [504, 528.0]
+    coordinate: [384, 536.0]
     rotation: 0
     state: true
 - name: blocks_unpack_k_bits_bb_0
@@ -486,7 +524,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [320, 400.0]
+    coordinate: [352, 432.0]
     rotation: 0
     state: true
 - name: blocks_unpack_k_bits_bb_0_0
@@ -502,7 +540,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [288, 224.0]
+    coordinate: [800, 312.0]
     rotation: 0
     state: true
 - name: blocks_vector_source_x_0
@@ -522,10 +560,10 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [0, 160.0]
+    coordinate: [568, 264.0]
     rotation: 0
     state: enabled
-- name: blocks_vector_source_x_1
+- name: blocks_vector_source_x_0_0
   id: blocks_vector_source_x
   parameters:
     affinity: ''
@@ -533,16 +571,36 @@ blocks:
     comment: ''
     maxoutbuf: '0'
     minoutbuf: '0'
-    repeat: 'True'
+    repeat: 'False'
     tags: '[]'
     type: byte
-    vector: tuple(np.random.RandomState(seed=42).randint(0, 256, size=64, dtype=np.uint8))
+    vector: np.repeat(65,2000)
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [64, 528.0]
+    coordinate: [56, 120.0]
+    rotation: 0
+    state: enabled
+- name: blocks_vector_source_x_0_0_0
+  id: blocks_vector_source_x
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    repeat: 'False'
+    tags: '[]'
+    type: byte
+    vector: np.repeat(65,2000)
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 376.0]
     rotation: 0
     state: enabled
 - name: digital_constellation_encoder_bc_0
@@ -561,6 +619,24 @@ blocks:
     coordinate: [1472, 304.0]
     rotation: 0
     state: enabled
+- name: digital_crc32_bb_0
+  id: digital_crc32_bb
+  parameters:
+    affinity: ''
+    alias: ''
+    check: 'False'
+    comment: ''
+    lengthtagname: '"quadro"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packed: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [504, 392.0]
+    rotation: 0
+    state: enabled
 - name: fec_extended_tagged_encoder_0
   id: fec_extended_tagged_encoder
   parameters:
@@ -577,7 +653,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [624, 376.0]
+    coordinate: [696, 488.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -1035,17 +1111,21 @@ blocks:
     state: true
 
 connections:
+- [analog_random_uniform_source_x_0, '0', blocks_unpack_k_bits_bb_0, '0']
 - [blocks_char_to_float_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_file_source_0, '0', blocks_unpack_k_bits_bb_0, '0']
+- [blocks_file_source_0, '0', blocks_stream_mux_0_0, '1']
 - [blocks_pack_k_bits_bb_1, '0', digital_constellation_encoder_bc_0, '0']
 - [blocks_stream_mux_0, '0', blocks_char_to_float_0, '0']
 - [blocks_stream_mux_0, '0', blocks_pack_k_bits_bb_1, '0']
-- [blocks_stream_to_tagged_stream_0, '0', fec_extended_tagged_encoder_0, '0']
+- [blocks_stream_mux_0_0, '0', blocks_unpack_k_bits_bb_0, '0']
+- [blocks_stream_to_tagged_stream_0, '0', digital_crc32_bb_0, '0']
 - [blocks_unpack_k_bits_bb_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [blocks_unpack_k_bits_bb_0_0, '0', blocks_stream_mux_0, '0']
 - [blocks_vector_source_x_0, '0', blocks_unpack_k_bits_bb_0_0, '0']
-- [blocks_vector_source_x_1, '0', blocks_unpack_k_bits_bb_0, '0']
+- [blocks_vector_source_x_0_0, '0', blocks_stream_mux_0_0, '0']
+- [blocks_vector_source_x_0_0_0, '0', blocks_stream_mux_0_0, '2']
 - [digital_constellation_encoder_bc_0, '0', interp_fir_filter_xxx_0, '0']
+- [digital_crc32_bb_0, '0', fec_extended_tagged_encoder_0, '0']
 - [fec_extended_tagged_encoder_0, '0', blocks_stream_mux_0, '1']
 - [interp_fir_filter_xxx_0, '0', osmosdr_sink_0, '0']
 - [interp_fir_filter_xxx_0, '0', qtgui_sink_x_0, '0']
