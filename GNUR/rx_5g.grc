@@ -396,7 +396,7 @@ blocks:
     bus_structure: null
     coordinate: [2160, 268.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_multiply_const_vxx_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -654,7 +654,7 @@ blocks:
     bus_structure: null
     coordinate: [2144, 500.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: osmosdr_source_0
   id: osmosdr_source
   parameters:

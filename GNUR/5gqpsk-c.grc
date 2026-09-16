@@ -427,7 +427,7 @@ blocks:
     bus_structure: null
     coordinate: [48, 320.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: blocks_char_to_float_0
   id: blocks_char_to_float
   parameters:
@@ -460,9 +460,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2456, 832.0]
+    coordinate: [3056, 960.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_file_sink_0_0
   id: blocks_file_sink
   parameters:
@@ -493,16 +493,16 @@ blocks:
     maxoutbuf: '0'
     minoutbuf: '0'
     offset: '0'
-    repeat: 'True'
+    repeat: 'False'
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [320, 304.0]
+    coordinate: [40, 184.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_multiply_const_vxx_0
   id: blocks_multiply_const_vxx
   parameters:
@@ -520,7 +520,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [800, 656.0]
+    coordinate: [768, 968.0]
     rotation: 0
     state: enabled
 - name: blocks_pack_k_bits_bb_0
@@ -528,7 +528,7 @@ blocks:
   parameters:
     affinity: ''
     alias: ''
-    comment: ''
+    comment: Reempacota os bits do decodificador em bytes (a tag 'quadro' vai junto).
     k: '8'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -536,7 +536,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2264, 848.0]
+    coordinate: [1984, 1072.0]
     rotation: 0
     state: enabled
 - name: blocks_pack_k_bits_bb_1
@@ -583,16 +583,54 @@ blocks:
     len_tag_key: '"quadro"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packet_len: K-32
+    packet_len: (K-32)//8
     type: byte
     vlen: '1'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [712, 328.0]
+    coordinate: [352, 328.0]
     rotation: 0
     state: true
+- name: blocks_tagged_stream_multiply_length_rx
+  id: blocks_tagged_stream_multiply_length
+  parameters:
+    affinity: ''
+    alias: ''
+    c: 1/8
+    comment: "\xD71/8: tag 'quadro' volta de bits a bytes"
+    lengthtagname: '"quadro"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2160, 1080.0]
+    rotation: 0
+    state: enabled
+- name: blocks_tagged_stream_multiply_length_tx
+  id: blocks_tagged_stream_multiply_length
+  parameters:
+    affinity: ''
+    alias: ''
+    c: '8'
+    comment: "\xD78: tag 'quadro' passa de bytes a bits"
+    lengthtagname: '"quadro"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [920, 336.0]
+    rotation: 0
+    state: enabled
 - name: blocks_throttle2_0
   id: blocks_throttle2
   parameters:
@@ -627,7 +665,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [528, 336.0]
+    coordinate: [744, 332.0]
     rotation: 0
     state: true
 - name: blocks_unpack_k_bits_bb_0_0
@@ -717,7 +755,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1168, 872.0]
+    coordinate: [1216, 928.0]
     rotation: 0
     state: enabled
 - name: digital_costas_loop_cc_0
@@ -735,25 +773,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [912, 816.0]
-    rotation: 0
-    state: enabled
-- name: digital_crc32_bb_0
-  id: digital_crc32_bb
-  parameters:
-    affinity: ''
-    alias: ''
-    check: 'True'
-    comment: ''
-    lengthtagname: '"quadro"'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    packed: 'False'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [2024, 832.0]
+    coordinate: [936, 944.0]
     rotation: 0
     state: enabled
 - name: digital_crc32_bb_0_0
@@ -762,16 +782,42 @@ blocks:
     affinity: ''
     alias: ''
     check: 'False'
-    comment: ''
+    comment: "CRC-32 sobre os 60 bytes da carga \xFAtil; anexa 4 bytes (LSB primeiro).\n\
+      O CRC Check do receptor usa a mesma conven\xE7\xE3o (LSB CRC in PDU = Yes)."
     lengthtagname: '"quadro"'
     maxoutbuf: '0'
     minoutbuf: '0'
-    packed: 'False'
+    packed: 'True'
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [912, 320.0]
+    coordinate: [552, 320.0]
+    rotation: 0
+    state: enabled
+- name: digital_crc_check_0
+  id: digital_crc_check
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "PDUs v\xE1lidas saem em 'ok', inv\xE1lidas em 'fail'. Discard CRC tira\
+      \ os 4 bytes."
+    discard_crc: 'True'
+    final_xor: '0xFFFFFFFF'
+    initial_value: '0xFFFFFFFF'
+    input_reflected: 'True'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    num_bits: '32'
+    poly: '0x4C11DB7'
+    result_reflected: 'True'
+    skip_header_bytes: '0'
+    swap_endianness: 'True'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2448, 832.0]
     rotation: 0
     state: enabled
 - name: digital_diff_decoder_bb_0
@@ -821,47 +867,140 @@ blocks:
 - name: epy_block_0
   id: epy_block
   parameters:
-    _source_code: "import numpy as np\nimport pmt\nfrom gnuradio import gr\n\n\nclass\
-      \ blk(gr.basic_block):\n    \"\"\"\n    Monitor de BLER \u2014 conta quadros\
-      \ que chegam ao CRC (porta 0) e quadros\n    que passam no CRC (porta 1), e\
-      \ imprime a BLER periodicamente.\n    \"\"\"\n\n    def __init__(self, tag_name=\"\
-      quadro\", freq_att=2000):\n        gr.basic_block.__init__(\n            self,\
-      \ name='BLER Monitor',\n            in_sig=[np.uint8, np.uint8],\n         \
-      \   out_sig=[],\n        )\n        self.tag_key = pmt.intern(tag_name)\n  \
-      \      self.freq_att = freq_att\n        self.quadros = 0\n        self.quadros_validos\
-      \ = 0\n        self.q_tot = 0\n        self.qv_tot = 0\n\n    def forecast(self,\
-      \ noutput_items, ninputs):\n        return [0, 0]\n\n    def general_work(self,\
-      \ input_items, output_items):\n        for port, counter_name in ((0, 'quadros'),\
-      \ (1, 'quadros_validos')):\n            n = len(input_items[port])\n       \
-      \     if n:\n                tags = self.get_tags_in_window(port, 0, n, self.tag_key)\n\
-      \                if counter_name == 'quadros':\n                    self.quadros\
-      \ += len(tags)\n                else:\n                    self.quadros_validos\
-      \ += len(tags)\n                self.consume(port, n)\n        if self.quadros\
-      \ and self.quadros % self.freq_att == 0:\n            bler = 1.0 - self.quadros_validos\
-      \ / self.quadros\n            self.q_tot += self.quadros; self.qv_tot += self.quadros_validos\n\
-      \            bler_tot = 1.0 - self.qv_tot / self.q_tot\n            print(f\"\
-      [BLER] quadros={self.quadros}  quadros_validos={self.quadros_validos}  BLER={bler:.4f}\"\
-      )\n            print(f\"[BLER TOTAL] quadros={self.q_tot}  quadros_validos={self.qv_tot}\
-      \  BLER={bler_tot:.4f}\")\n            self.quadros = 0; self.quadros_validos\
-      \ = 0\n        return 0\n"
+    _source_code: "import time\n\nimport numpy as np\nimport pmt\nfrom gnuradio import\
+      \ gr\n\n\nclass blk(gr.basic_block):\n    \"\"\"\n    Monitor de BLER e vaz\xE3\
+      o a partir das portas de mensagem do CRC Check.\n\n    Mensagens 'ok' e 'fail':\
+      \ PDUs vindas do CRC Check (com Discard CRC = Yes as\n        duas chegam sem\
+      \ o CRC; crc_bits \xE9 somado de volta para contar a vaz\xE3o).\n        Cada\
+      \ PDU \xE9 um quadro que chegou ao decodificador; 'ok' \xE9 um quadro v\xE1\
+      lido.\n\n    Entrada 0 (float): sa\xEDda do Constellation Soft Decoder (LLRs).\
+      \ Serve s\xF3 de\n        rel\xF3gio: cada item vale 1/taxa_relogio segundos\
+      \ de sinal (2 LLRs por\n        s\xEDmbolo QPSK => taxa_relogio = bit_rate).\
+      \ O tempo \xE9 medido em \"tempo de\n        sinal\", independente do throttle,\
+      \ e os quadros perdidos no sincronismo\n        (que nunca viram PDU) entram\
+      \ na conta.\n\n    A cada janela_s segundos de sinal emite (e, com imprimir=True,\
+      \ imprime):\n        esperados = T * taxa_relogio / bits_por_quadro_tx   (quadros\
+      \ transmitidos)\n        BLER      = 1 - v\xE1lidos/recebidos      (s\xF3 quadros\
+      \ que chegaram ao decodificador)\n        FER       = 1 - v\xE1lidos/esperados\
+      \      (inclui quadros perdidos no sincronismo)\n        vaz\xE3o     = bits\
+      \ que saem do decodificador (com CRC) / T\n        goodput   = bits \xFAteis\
+      \ dos quadros v\xE1lidos / T\n\n    aquecimento_s: tempo de sinal descartado\
+      \ no in\xEDcio (transit\xF3rio de aquisi\xE7\xE3o);\n        ao fim dele todos\
+      \ os contadores s\xE3o zerados.\n\n    Sa\xEDdas (float, um item por relat\xF3\
+      rio, para QT GUI Number Sink):\n        0 BLER  1 FER  2 vaz\xE3o [bit/s]  3\
+      \ goodput [bit/s]   -- janela\n        4 BLER  5 FER  6 vaz\xE3o [bit/s]  7\
+      \ goodput [bit/s]   -- total\n    \"\"\"\n\n    def __init__(self, taxa_relogio=800e3,\
+      \ bits_por_quadro_tx=1056, crc_bits=32,\n                 janela_s=1.0, aquecimento_s=0.0,\
+      \ imprimir=False):\n        gr.basic_block.__init__(\n            self,\n  \
+      \          name=\"Monitor BLER/vaz\xE3o\",\n            in_sig=[np.float32],\n\
+      \            out_sig=[np.float32] * 8,\n        )\n        self.set_tag_propagation_policy(gr.TPP_DONT)\n\
+      \        self.message_port_register_in(pmt.intern(\"ok\"))\n        self.message_port_register_in(pmt.intern(\"\
+      fail\"))\n        self.set_msg_handler(pmt.intern(\"ok\"), self._quadro_ok)\n\
+      \        self.set_msg_handler(pmt.intern(\"fail\"), self._quadro_fail)\n\n \
+      \       self.taxa_relogio = float(taxa_relogio)\n        self.bits_por_quadro_tx\
+      \ = int(bits_por_quadro_tx)\n        self.crc_bits = int(crc_bits)\n       \
+      \ self.janela_s = float(janela_s)\n        self.aquecimento_s = float(aquecimento_s)\n\
+      \        self.imprimir = bool(imprimir)\n        self._aquecendo = self.aquecimento_s\
+      \ > 0\n\n        # contadores acumulados\n        self.relogio = 0         \
+      \ # itens consumidos na entrada 0\n        self.recebidos = 0        # quadros\
+      \ que chegaram ao decodificador (ok + fail)\n        self.validos = 0      \
+      \    # quadros com CRC ok\n        self.bits_recebidos = 0   # bits entregues\
+      \ pelo decodificador (com CRC)\n        self.bits_validos = 0     # bits \xFA\
+      teis dos quadros v\xE1lidos\n\n        # estado do \xFAltimo relat\xF3rio\n\
+      \        self._ult = (0, 0, 0, 0, 0)\n        self._t_parede_0 = time.monotonic()\n\
+      \        self._t_parede_ult = self._t_parede_0\n        self._prox_relatorio\
+      \ = self.janela_s\n\n    def forecast(self, noutput_items, ninputs):\n     \
+      \   # Exige >= 1 item do rel\xF3gio. Com 0, o escalonador chamaria general_work\n\
+      \        # em loop sempre que houvesse espa\xE7o de sa\xEDda (bloco com sa\xED\
+      das nunca\n        # \"dorme\" por falta de entrada), disputando o GIL com a\
+      \ GUI.\n        return [1] * ninputs\n\n    # ---- portas de mensagem (rodam\
+      \ na mesma thread do general_work)\n    def _bits_pdu(self, msg):\n        return\
+      \ 8 * pmt.length(pmt.cdr(msg))\n\n    def _quadro_ok(self, msg):\n        n\
+      \ = self._bits_pdu(msg)\n        self.recebidos += 1\n        self.validos +=\
+      \ 1\n        self.bits_recebidos += n + self.crc_bits\n        self.bits_validos\
+      \ += n\n\n    def _quadro_fail(self, msg):\n        self.recebidos += 1\n  \
+      \      self.bits_recebidos += self._bits_pdu(msg) + self.crc_bits\n\n    # ----\
+      \ rel\xF3gio e relat\xF3rio\n    def general_work(self, input_items, output_items):\n\
+      \        n = len(input_items[0])\n        if n:\n            self.relogio +=\
+      \ n\n            self.consume(0, n)\n\n        T = self.relogio / self.taxa_relogio\n\
+      \        if self._aquecendo and T >= self.aquecimento_s:\n            self._aquecendo\
+      \ = False\n            self.relogio = self.recebidos = self.validos = 0\n  \
+      \          self.bits_recebidos = self.bits_validos = 0\n            self._ult\
+      \ = (0, 0, 0, 0, 0)\n            self._t_parede_0 = self._t_parede_ult = time.monotonic()\n\
+      \            self._prox_relatorio = self.janela_s\n            if self.imprimir:\n\
+      \                print(f\"[aquecimento] {T:.2f}s de sinal descartados; contadores\
+      \ zerados\", flush=True)\n            return 0\n\n        if T >= self._prox_relatorio\
+      \ and len(output_items[0]) >= 1:\n            self._prox_relatorio = (T // self.janela_s\
+      \ + 1) * self.janela_s\n            for k, v in enumerate(self._relatorio()):\n\
+      \                output_items[k][0] = v\n            return 1\n        return\
+      \ 0\n\n    def _metricas(self, n_itens, rec, val, brec, bval):\n        T =\
+      \ n_itens / self.taxa_relogio\n        esperados = n_itens / self.bits_por_quadro_tx\
+      \   # exato se n_itens for m\xFAltiplo do quadro\n        bler = 1.0 - val /\
+      \ rec if rec else float(\"nan\")\n        fer = 1.0 - val / esperados if esperados\
+      \ else float(\"nan\")\n        vazao = brec / T if T else 0.0\n        goodput\
+      \ = bval / T if T else 0.0\n        return T, esperados, bler, fer, vazao, goodput\n\
+      \n    def _relatorio(self):\n        agora = time.monotonic()\n        rel_u,\
+      \ rec_u, val_u, brec_u, bval_u = self._ult\n        linhas = (\n           \
+      \ (\"janela\", self.relogio - rel_u, agora - self._t_parede_ult,\n         \
+      \    self.recebidos - rec_u, self.validos - val_u,\n             self.bits_recebidos\
+      \ - brec_u, self.bits_validos - bval_u),\n            (\"total \", self.relogio,\
+      \ agora - self._t_parede_0,\n             self.recebidos, self.validos, self.bits_recebidos,\
+      \ self.bits_validos),\n        )\n        valores = []\n        for rotulo,\
+      \ dN, dTp, rec, val, brec, bval in linhas:\n            dT, esp, bler, fer,\
+      \ vazao, goodput = self._metricas(dN, rec, val, brec, bval)\n            valores\
+      \ += [bler, fer, vazao, goodput]\n            if self.imprimir:\n          \
+      \      print(\n                    f\"[{rotulo}] sinal={dT:7.2f}s parede={dTp:7.2f}s\
+      \  \"\n                    f\"esperados={esp:9.1f} recebidos={rec:7d} v\xE1\
+      lidos={val:7d}  \"\n                    f\"BLER={bler:.3e} FER={fer:.3e}  \"\
+      \n                    f\"vaz\xE3o={vazao / 1e3:7.1f} kb/s goodput={goodput /\
+      \ 1e3:7.1f} kb/s\",\n                    flush=True,\n                )\n  \
+      \      self._ult = (self.relogio, self.recebidos, self.validos, self.bits_recebidos,\
+      \ self.bits_validos)\n        self._t_parede_ult = agora\n        return valores\n"
     affinity: ''
     alias: ''
+    aquecimento_s: '1.0'
+    bits_por_quadro_tx: sync_len + N
     comment: ''
-    freq_att: '2000'
+    crc_bits: '32'
+    imprimir: 'False'
+    janela_s: '0.125'
     maxoutbuf: '0'
     minoutbuf: '0'
-    tag_name: '''quadro'''
+    taxa_relogio: bit_rate
   states:
-    _io_cache: "('BLER Monitor', 'blk', [('tag_name', \"'quadro'\"), ('freq_att',\
-      \ '2000')], [('0', 'byte', 1), ('1', 'byte', 1)], [], '\\nMonitor de BLER \u2014\
-      \ conta quadros que chegam ao CRC (porta 0) e quadros\\nque passam no CRC (porta\
-      \ 1), e imprime a BLER periodicamente.\\n', ['freq_att'])"
+    _io_cache: "('Monitor BLER/vaz\xE3o', 'blk', [('taxa_relogio', '800000.0'), ('bits_por_quadro_tx',\
+      \ '1056'), ('crc_bits', '32'), ('janela_s', '1.0'), ('aquecimento_s', '0.0'),\
+      \ ('imprimir', 'False')], [('0', 'float', 1), ('fail', 'message', 1), ('ok',\
+      \ 'message', 1)], [('0', 'float', 1), ('1', 'float', 1), ('2', 'float', 1),\
+      \ ('3', 'float', 1), ('4', 'float', 1), ('5', 'float', 1), ('6', 'float', 1),\
+      \ ('7', 'float', 1)], '\\nMonitor de BLER e vaz\xE3o a partir das portas de\
+      \ mensagem do CRC Check.\\n\\nMensagens \\'ok\\' e \\'fail\\': PDUs vindas do\
+      \ CRC Check (com Discard CRC = Yes as\\n    duas chegam sem o CRC; crc_bits\
+      \ \xE9 somado de volta para contar a vaz\xE3o).\\n    Cada PDU \xE9 um quadro\
+      \ que chegou ao decodificador; \\'ok\\' \xE9 um quadro v\xE1lido.\\n\\nEntrada\
+      \ 0 (float): sa\xEDda do Constellation Soft Decoder (LLRs). Serve s\xF3 de\\\
+      n    rel\xF3gio: cada item vale 1/taxa_relogio segundos de sinal (2 LLRs por\\\
+      n    s\xEDmbolo QPSK => taxa_relogio = bit_rate). O tempo \xE9 medido em \"\
+      tempo de\\n    sinal\", independente do throttle, e os quadros perdidos no sincronismo\\\
+      n    (que nunca viram PDU) entram na conta.\\n\\nA cada janela_s segundos de\
+      \ sinal emite (e, com imprimir=True, imprime):\\n    esperados = T * taxa_relogio\
+      \ / bits_por_quadro_tx   (quadros transmitidos)\\n    BLER      = 1 - v\xE1\
+      lidos/recebidos      (s\xF3 quadros que chegaram ao decodificador)\\n    FER\
+      \       = 1 - v\xE1lidos/esperados      (inclui quadros perdidos no sincronismo)\\\
+      n    vaz\xE3o     = bits que saem do decodificador (com CRC) / T\\n    goodput\
+      \   = bits \xFAteis dos quadros v\xE1lidos / T\\n\\naquecimento_s: tempo de\
+      \ sinal descartado no in\xEDcio (transit\xF3rio de aquisi\xE7\xE3o);\\n    ao\
+      \ fim dele todos os contadores s\xE3o zerados.\\n\\nSa\xEDdas (float, um item\
+      \ por relat\xF3rio, para QT GUI Number Sink):\\n    0 BLER  1 FER  2 vaz\xE3\
+      o [bit/s]  3 goodput [bit/s]   -- janela\\n    4 BLER  5 FER  6 vaz\xE3o [bit/s]\
+      \  7 goodput [bit/s]   -- total\\n', ['aquecimento_s', 'bits_por_quadro_tx',\
+      \ 'crc_bits', 'imprimir', 'janela_s', 'taxa_relogio'])"
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1888, 544.0]
+    coordinate: [2680, 592.0]
     rotation: 0
-    state: disabled
+    state: enabled
 - name: epy_block_0_0
   id: epy_block
   parameters:
@@ -932,136 +1071,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1376, 800.0]
-    rotation: 0
-    state: enabled
-- name: epy_block_1
-  id: epy_block
-  parameters:
-    _source_code: "import time\n\nimport numpy as np\nimport pmt\nfrom gnuradio import\
-      \ gr\n\n\nclass blk(gr.basic_block):\n    \"\"\"\n    Monitor de BLER, FER,\
-      \ vaz\xE3o e goodput, a partir das tags de comprimento\n    que j\xE1 existem\
-      \ no fluxograma original (sem precisar de CRC baseado em\n    mensagem/PDU).\n\
-      \n    Porta 0 (uint8, bit a bit): sa\xEDda do decodificador FEC, ANTES do CRC.\n\
-      \        Cada tag 'quadro' marca o in\xEDcio de um quadro decodificado; o valor\n\
-      \        da tag \xE9 o comprimento do quadro em bits (payload + CRC). Tamb\xE9\
-      m\n        serve de rel\xF3gio: cada item vale 1/taxa_relogio segundos de sinal\n\
-      \        (taxa_relogio = bit_rate), ent\xE3o quadros perdidos por perda de\n\
-      \        sincronismo (que nunca chegam nem \xE0 porta 0) tamb\xE9m entram na\n\
-      \        conta via 'esperados'.\n\n    Porta 1 (uint8, bit a bit): sa\xEDda\
-      \ do CRC Check (check=True). S\xF3 os\n        quadros que passaram no CRC chegam\
-      \ aqui, j\xE1 sem os bits de CRC\n        (packed=False). O valor da tag 'quadro'\
-      \ nessa porta \xE9 o\n        comprimento \xFAtil (payload).\n\n    bits_por_quadro_tx:\
-      \ tamanho nominal do quadro transmitido (ex:\n        sync_len + N), usado s\xF3\
-      \ para estimar quantos quadros deveriam ter\n        chegado no total no tempo\
-      \ decorrido (inclui os perdidos por perda\n        de sincronismo).\n\n    A\
-      \ cada janela_s segundos de sinal, emite (e opcionalmente imprime):\n      \
-      \  0 BLER  1 FER  2 vaz\xE3o [bit/s]  3 goodput [bit/s]   -- janela\n      \
-      \  4 BLER  5 FER  6 vaz\xE3o [bit/s]  7 goodput [bit/s]   -- total\n    \"\"\
-      \"\n\n    def __init__(self, tag_name=\"quadro\", taxa_relogio=800e3,\n    \
-      \             bits_por_quadro_tx=1056, janela_s=1.0,\n                 aquecimento_s=0.0,\
-      \ imprimir=False):\n        gr.basic_block.__init__(\n            self,\n  \
-      \          name=\"Monitor BLER/vaz\xE3o\",\n            in_sig=[np.uint8, np.uint8],\n\
-      \            out_sig=[np.float32] * 8,\n        )\n        self.tag_key = pmt.intern(tag_name)\n\
-      \        self.taxa_relogio = float(taxa_relogio)\n        self.bits_por_quadro_tx\
-      \ = int(bits_por_quadro_tx)\n        self.janela_s = float(janela_s)\n     \
-      \   self.aquecimento_s = float(aquecimento_s)\n        self.imprimir = bool(imprimir)\n\
-      \        self._aquecendo = self.aquecimento_s > 0\n\n        # contadores acumulados\n\
-      \        self.relogio = 0          # itens (bits) consumidos na porta 0\n  \
-      \      self.recebidos = 0        # quadros que chegaram ao CRC (porta 0)\n \
-      \       self.validos = 0          # quadros que passaram no CRC (porta 1)\n\
-      \        self.bits_recebidos = 0   # bits dos quadros recebidos (com CRC)\n\
-      \        self.bits_validos = 0     # bits \xFAteis dos quadros v\xE1lidos\n\n\
-      \        # estado do \xFAltimo relat\xF3rio\n        self._ult = (0, 0, 0, 0,\
-      \ 0)\n        self._t_parede_0 = time.monotonic()\n        self._t_parede_ult\
-      \ = self._t_parede_0\n        self._prox_relatorio = self.janela_s\n\n    def\
-      \ forecast(self, noutput_items, ninputs):\n        # N\xE3o exige um m\xEDnimo\
-      \ de itens de entrada: o bloco s\xF3 reporta\n        # quando alguma das portas\
-      \ trouxer dados, e n\xE3o fica em polling.\n        return [0, 0]\n\n    # ----\
-      \ contagem via tags (roda no general_work, thread do scheduler)\n    def general_work(self,\
-      \ input_items, output_items):\n        n0 = len(input_items[0])\n        if\
-      \ n0:\n            for tag in self.get_tags_in_window(0, 0, n0, self.tag_key):\n\
-      \                self.recebidos += 1\n                self.bits_recebidos +=\
-      \ pmt.to_long(tag.value)\n            self.relogio += n0\n            self.consume(0,\
-      \ n0)\n\n        n1 = len(input_items[1])\n        if n1:\n            for tag\
-      \ in self.get_tags_in_window(1, 0, n1, self.tag_key):\n                self.validos\
-      \ += 1\n                self.bits_validos += pmt.to_long(tag.value)\n      \
-      \      self.consume(1, n1)\n\n        T = self.relogio / self.taxa_relogio\n\
-      \        if self._aquecendo and T >= self.aquecimento_s:\n            self._aquecendo\
-      \ = False\n            self.relogio = self.recebidos = self.validos = 0\n  \
-      \          self.bits_recebidos = self.bits_validos = 0\n            self._ult\
-      \ = (0, 0, 0, 0, 0)\n            self._t_parede_0 = self._t_parede_ult = time.monotonic()\n\
-      \            self._prox_relatorio = self.janela_s\n            if self.imprimir:\n\
-      \                print(f\"[aquecimento] {T:.2f}s de sinal descartados; \"\n\
-      \                      f\"contadores zerados\", flush=True)\n            return\
-      \ 0\n\n        if T >= self._prox_relatorio and len(output_items[0]) >= 1:\n\
-      \            self._prox_relatorio = (T // self.janela_s + 1) * self.janela_s\n\
-      \            for k, v in enumerate(self._relatorio()):\n                output_items[k][0]\
-      \ = v\n            return 1\n        return 0\n\n    def _metricas(self, n_itens,\
-      \ rec, val, brec, bval):\n        T = n_itens / self.taxa_relogio\n        esperados\
-      \ = n_itens / self.bits_por_quadro_tx\n        bler = 1.0 - val / rec if rec\
-      \ else float(\"nan\")\n        fer = 1.0 - val / esperados if esperados else\
-      \ float(\"nan\")\n        vazao = brec / T if T else 0.0\n        goodput =\
-      \ bval / T if T else 0.0\n        return T, esperados, bler, fer, vazao, goodput\n\
-      \n    def _relatorio(self):\n        agora = time.monotonic()\n        rel_u,\
-      \ rec_u, val_u, brec_u, bval_u = self._ult\n        linhas = (\n           \
-      \ (\"janela\", self.relogio - rel_u, agora - self._t_parede_ult,\n         \
-      \    self.recebidos - rec_u, self.validos - val_u,\n             self.bits_recebidos\
-      \ - brec_u, self.bits_validos - bval_u),\n            (\"total \", self.relogio,\
-      \ agora - self._t_parede_0,\n             self.recebidos, self.validos, self.bits_recebidos,\n\
-      \             self.bits_validos),\n        )\n        valores = []\n       \
-      \ for rotulo, dN, dTp, rec, val, brec, bval in linhas:\n            dT, esp,\
-      \ bler, fer, vazao, goodput = self._metricas(\n                dN, rec, val,\
-      \ brec, bval)\n            valores += [bler, fer, vazao, goodput]\n        \
-      \    if self.imprimir:\n                print(\n                    f\"[{rotulo}]\
-      \ sinal={dT:7.2f}s parede={dTp:7.2f}s  \"\n                    f\"esperados={esp:9.1f}\
-      \ recebidos={rec:7d} \"\n                    f\"v\xE1lidos={val:7d}  \"\n  \
-      \                  f\"BLER={bler:.3e} FER={fer:.3e}  \"\n                  \
-      \  f\"vaz\xE3o={vazao / 1e3:7.1f} kb/s \"\n                    f\"goodput={goodput\
-      \ / 1e3:7.1f} kb/s\",\n                    flush=True,\n                )\n\
-      \        self._ult = (self.relogio, self.recebidos, self.validos,\n        \
-      \             self.bits_recebidos, self.bits_validos)\n        self._t_parede_ult\
-      \ = agora\n        return valores"
-    affinity: ''
-    alias: ''
-    aquecimento_s: '1.0'
-    bits_por_quadro_tx: sync_len + N
-    comment: ''
-    imprimir: 'False'
-    janela_s: '0.0125'
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    tag_name: '"quadro"'
-    taxa_relogio: bit_rate
-  states:
-    _io_cache: "('Monitor BLER/vaz\xE3o', 'blk', [('tag_name', \"'quadro'\"), ('taxa_relogio',\
-      \ '800000.0'), ('bits_por_quadro_tx', '1056'), ('janela_s', '1.0'), ('aquecimento_s',\
-      \ '0.0'), ('imprimir', 'False')], [('0', 'byte', 1), ('1', 'byte', 1)], [('0',\
-      \ 'float', 1), ('1', 'float', 1), ('2', 'float', 1), ('3', 'float', 1), ('4',\
-      \ 'float', 1), ('5', 'float', 1), ('6', 'float', 1), ('7', 'float', 1)], \"\\\
-      nMonitor de BLER, FER, vaz\xE3o e goodput, a partir das tags de comprimento\\\
-      nque j\xE1 existem no fluxograma original (sem precisar de CRC baseado em\\\
-      nmensagem/PDU).\\n\\nPorta 0 (uint8, bit a bit): sa\xEDda do decodificador FEC,\
-      \ ANTES do CRC.\\n    Cada tag 'quadro' marca o in\xEDcio de um quadro decodificado;\
-      \ o valor\\n    da tag \xE9 o comprimento do quadro em bits (payload + CRC).\
-      \ Tamb\xE9m\\n    serve de rel\xF3gio: cada item vale 1/taxa_relogio segundos\
-      \ de sinal\\n    (taxa_relogio = bit_rate), ent\xE3o quadros perdidos por perda\
-      \ de\\n    sincronismo (que nunca chegam nem \xE0 porta 0) tamb\xE9m entram\
-      \ na\\n    conta via 'esperados'.\\n\\nPorta 1 (uint8, bit a bit): sa\xEDda\
-      \ do CRC Check (check=True). S\xF3 os\\n    quadros que passaram no CRC chegam\
-      \ aqui, j\xE1 sem os bits de CRC\\n    (packed=False). O valor da tag 'quadro'\
-      \ nessa porta \xE9 o\\n    comprimento \xFAtil (payload).\\n\\nbits_por_quadro_tx:\
-      \ tamanho nominal do quadro transmitido (ex:\\n    sync_len + N), usado s\xF3\
-      \ para estimar quantos quadros deveriam ter\\n    chegado no total no tempo\
-      \ decorrido (inclui os perdidos por perda\\n    de sincronismo).\\n\\nA cada\
-      \ janela_s segundos de sinal, emite (e opcionalmente imprime):\\n    0 BLER\
-      \  1 FER  2 vaz\xE3o [bit/s]  3 goodput [bit/s]   -- janela\\n    4 BLER  5\
-      \ FER  6 vaz\xE3o [bit/s]  7 goodput [bit/s]   -- total\\n\", ['aquecimento_s',\
-      \ 'bits_por_quadro_tx', 'imprimir', 'janela_s', 'taxa_relogio'])"
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [2200, 552.0]
+    coordinate: [1440, 952.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_decoder_0
@@ -1082,7 +1092,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1752, 816.0]
+    coordinate: [1704, 1040.0]
     rotation: 0
     state: enabled
 - name: fec_extended_tagged_encoder_0
@@ -1101,7 +1111,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1120, 336.0]
+    coordinate: [1176, 340.0]
     rotation: 0
     state: enabled
 - name: import_0
@@ -1153,6 +1163,40 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [192, 840.0]
+    rotation: 0
+    state: enabled
+- name: pdu_pdu_to_tagged_stream_rx
+  id: pdu_pdu_to_tagged_stream
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: "S\xF3 para gravar a carga \xFAtil v\xE1lida em arquivo."
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tag: '"quadro"'
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2800, 976.0]
+    rotation: 0
+    state: disabled
+- name: pdu_tagged_stream_to_pdu_rx
+  id: pdu_tagged_stream_to_pdu
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    tag: '"quadro"'
+    type: byte
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2288, 960.0]
     rotation: 0
     state: enabled
 - name: qtgui_eye_sink_x_0
@@ -1311,7 +1355,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2520, 552.0]
+    coordinate: [3088, 592.0]
     rotation: 0
     state: enabled
 - name: qtgui_number_sink_vazao
@@ -1374,7 +1418,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2520, 680.0]
+    coordinate: [3088, 720.0]
     rotation: 0
     state: enabled
 - name: qtgui_sink_x_0
@@ -1461,7 +1505,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1232, 560.0]
+    coordinate: [1128, 648.0]
     rotation: 0
     state: enabled
 - name: qtgui_time_sink_x_0
@@ -1752,7 +1796,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1760, 704.0]
+    coordinate: [1720, 904.0]
     rotation: 0
     state: enabled
 - name: tabs
@@ -1845,49 +1889,52 @@ blocks:
 connections:
 - [analog_agc_xx_0, '0', digital_symbol_sync_xx_0, '0']
 - [analog_random_uniform_source_x_0, '0', blocks_file_sink_0_0, '0']
-- [analog_random_uniform_source_x_0, '0', blocks_unpack_k_bits_bb_0, '0']
+- [analog_random_uniform_source_x_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [blocks_char_to_float_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_file_source_0, '0', blocks_unpack_k_bits_bb_0, '0']
+- [blocks_file_source_0, '0', blocks_stream_to_tagged_stream_0, '0']
 - [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
-- [blocks_pack_k_bits_bb_0, '0', blocks_file_sink_0, '0']
+- [blocks_pack_k_bits_bb_0, '0', blocks_tagged_stream_multiply_length_rx, '0']
 - [blocks_pack_k_bits_bb_1, '0', digital_constellation_encoder_bc_0, '0']
 - [blocks_stream_mux_0, '0', blocks_char_to_float_0, '0']
 - [blocks_stream_mux_0, '0', blocks_throttle2_0, '0']
 - [blocks_stream_to_tagged_stream_0, '0', digital_crc32_bb_0_0, '0']
+- [blocks_tagged_stream_multiply_length_rx, '0', pdu_tagged_stream_to_pdu_rx, '0']
+- [blocks_tagged_stream_multiply_length_tx, '0', fec_extended_tagged_encoder_0, '0']
 - [blocks_throttle2_0, '0', blocks_pack_k_bits_bb_1, '0']
-- [blocks_unpack_k_bits_bb_0, '0', blocks_stream_to_tagged_stream_0, '0']
+- [blocks_unpack_k_bits_bb_0, '0', blocks_tagged_stream_multiply_length_tx, '0']
 - [blocks_unpack_k_bits_bb_0_0, '0', blocks_stream_mux_0, '0']
 - [blocks_vector_source_x_0, '0', blocks_unpack_k_bits_bb_0_0, '0']
 - [channels_channel_model_0, '0', qtgui_sink_x_0_0, '0']
 - [channels_channel_model_0, '0', virtual_sink_1, '0']
 - [digital_constellation_encoder_bc_0, '0', interp_fir_filter_xxx_0, '0']
+- [digital_constellation_soft_decoder_cf_0, '0', epy_block_0, '0']
 - [digital_constellation_soft_decoder_cf_0, '0', epy_block_0_0, '0']
 - [digital_costas_loop_cc_0, '0', digital_constellation_soft_decoder_cf_0, '0']
 - [digital_costas_loop_cc_0, '0', qtgui_sink_x_1, '0']
-- [digital_crc32_bb_0, '0', blocks_pack_k_bits_bb_0, '0']
-- [digital_crc32_bb_0, '0', epy_block_0, '1']
-- [digital_crc32_bb_0, '0', epy_block_1, '1']
-- [digital_crc32_bb_0_0, '0', fec_extended_tagged_encoder_0, '0']
+- [digital_crc32_bb_0_0, '0', blocks_unpack_k_bits_bb_0, '0']
+- [digital_crc_check_0, fail, epy_block_0, fail]
+- [digital_crc_check_0, ok, epy_block_0, ok]
+- [digital_crc_check_0, ok, pdu_pdu_to_tagged_stream_rx, pdus]
 - [digital_symbol_sync_xx_0, '0', blocks_multiply_const_vxx_0, '0']
+- [epy_block_0, '0', qtgui_number_sink_taxas, '0']
+- [epy_block_0, '1', qtgui_number_sink_taxas, '1']
+- [epy_block_0, '2', qtgui_number_sink_vazao, '0']
+- [epy_block_0, '3', qtgui_number_sink_vazao, '1']
+- [epy_block_0, '4', qtgui_number_sink_taxas, '2']
+- [epy_block_0, '5', qtgui_number_sink_taxas, '3']
+- [epy_block_0, '6', qtgui_number_sink_vazao, '2']
+- [epy_block_0, '7', qtgui_number_sink_vazao, '3']
 - [epy_block_0_0, '0', fec_extended_tagged_decoder_0, '0']
 - [epy_block_0_0, '0', qtgui_time_sink_x_0_0_0, '0']
-- [epy_block_1, '0', qtgui_number_sink_taxas, '0']
-- [epy_block_1, '1', qtgui_number_sink_taxas, '1']
-- [epy_block_1, '2', qtgui_number_sink_vazao, '0']
-- [epy_block_1, '3', qtgui_number_sink_vazao, '1']
-- [epy_block_1, '4', qtgui_number_sink_taxas, '2']
-- [epy_block_1, '5', qtgui_number_sink_taxas, '3']
-- [epy_block_1, '6', qtgui_number_sink_vazao, '2']
-- [epy_block_1, '7', qtgui_number_sink_vazao, '3']
-- [fec_extended_tagged_decoder_0, '0', digital_crc32_bb_0, '0']
-- [fec_extended_tagged_decoder_0, '0', epy_block_0, '0']
-- [fec_extended_tagged_decoder_0, '0', epy_block_1, '0']
+- [fec_extended_tagged_decoder_0, '0', blocks_pack_k_bits_bb_0, '0']
 - [fec_extended_tagged_encoder_0, '0', blocks_stream_mux_0, '1']
 - [interp_fir_filter_xxx_0, '0', qtgui_sink_x_0, '0']
 - [interp_fir_filter_xxx_0, '0', virtual_sink_0, '0']
 - [interp_fir_filter_xxx_1, '0', analog_agc_xx_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_eye_sink_x_0, '0']
 - [interp_fir_filter_xxx_1, '0', qtgui_time_sink_x_0_0, '0']
+- [pdu_pdu_to_tagged_stream_rx, '0', blocks_file_sink_0, '0']
+- [pdu_tagged_stream_to_pdu_rx, pdus, digital_crc_check_0, in]
 - [virtual_source_0, '0', channels_channel_model_0, '0']
 - [virtual_source_1, '0', interp_fir_filter_xxx_1, '0']
 

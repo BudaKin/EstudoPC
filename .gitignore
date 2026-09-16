@@ -284,6 +284,7 @@ GNUR/*
 # Exceções apenas para os arquivos importantes
 !GNUR/alice.txt
 !GNUR/5gqpsk.grc
+!GNUR/5gqpsk-c.grc
 !GNUR/rx_5g.grc
 !GNUR/tx_5g.grc
 
