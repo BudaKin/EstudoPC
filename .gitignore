@@ -285,7 +285,9 @@ GNUR/*
 !GNUR/alice.txt
 !GNUR/5gqpsk.grc
 !GNUR/5gqpsk-c.grc
-!GNUR/rx_5g.grc
-!GNUR/tx_5g.grc
+!GNUR/BLER_Vazao/rx_5g.grc
+!GNUR/BLER_Vazao/tx_5g.grc
+!GNUR/BER/rx_BER.grc
+!GNUR/BER/tx_BER.grc
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,octave,linux,windows,visualstudiocode
