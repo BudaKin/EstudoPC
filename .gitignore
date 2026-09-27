@@ -281,11 +281,17 @@ $RECYCLE.BIN/
 # Ignora todo o conteúdo dentro do diretório GNUR
 GNUR/*
 
-# Exceções apenas para os arquivos importantes
+# Exceções apenas para os arquivos importantes do diretório GNUR
 !GNUR/alice.txt
 !GNUR/5gqpsk.grc
 !GNUR/5gqpsk-c.grc
 !GNUR/BLER_Vazao
 !GNUR/BER
+
+# Ignora todo o conteúdo dentro do diretório GNUR
+GNUR/BLER_Vazao/*
+
+# Ignora todo o conteúdo dentro do diretório GNUR
+GNUR/BER/*
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,octave,linux,windows,visualstudiocode
