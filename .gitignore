@@ -286,9 +286,12 @@ GNUR/*
 !GNUR/5gqpsk.grc
 !GNUR/5gqpsk-c.grc
 
-
+# Organizando as pastas novas
 !GNUR/BLER_Vazao/
+GNUR/BLER_Vazao/*
+
 !GNUR/BER/
+GNUR/BER/*
 
 !GNUR/BLER_Vazao/rx_5g.grc
 !GNUR/BLER_Vazao/tx_5g.grc
