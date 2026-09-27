@@ -1,0 +1,1698 @@
+options:
+  parameters:
+    author: ''
+    catch_exceptions: 'True'
+    category: '[GRC Hier Blocks]'
+    cmake_opt: ''
+    comment: ''
+    copyright: ''
+    description: ''
+    gen_cmake: 'On'
+    gen_linking: dynamic
+    generate_options: qt_gui
+    hier_block_src_path: '.:'
+    id: rx_5g
+    max_nouts: '0'
+    output_language: python
+    placement: (0,0)
+    qt_qss_theme: ''
+    realtime_scheduling: ''
+    run: 'True'
+    run_command: '{python} -u {filename}'
+    run_options: prompt
+    sizing_mode: fixed
+    thread_safe_setters: ''
+    title: RX - QPSK - 5G
+    window_size: (1000,1000)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [8, 4.0]
+    rotation: 0
+    state: enabled
+
+blocks:
+- name: K
+  id: variable
+  parameters:
+    comment: ''
+    value: '512'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1560, 8.0]
+    rotation: 0
+    state: enabled
+- name: N
+  id: variable
+  parameters:
+    comment: ''
+    value: '1024'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1560, 80.0]
+    rotation: 0
+    state: enabled
+- name: PC_dec
+  id: variable_polar_decoder_sc_def
+  parameters:
+    block_size: N
+    comment: ''
+    dim1: '1'
+    dim2: '4'
+    frozen_bit_positions: frozen_pos
+    frozen_bit_values: frozen_val
+    ndim: '0'
+    num_info_bits: K
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1232, 8.0]
+    rotation: 0
+    state: enabled
+- name: PC_enc
+  id: variable_polar_encoder_def
+  parameters:
+    block_size: N
+    comment: ''
+    dim1: '1'
+    dim2: '4'
+    frozen_bit_positions: frozen_pos
+    frozen_bit_values: frozen_val
+    is_packed: 'False'
+    ndim: '0'
+    num_info_bits: K
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1072, 8.0]
+    rotation: 0
+    state: enabled
+- name: RelSeq
+  id: variable
+  parameters:
+    comment: ''
+    value: np.array([0, 1, 2, 4, 8, 16, 32, 3, 5, 64, 9, 6, 17, 10, 18, 128, 12, 33,
+      65, 20, 256, 34, 24, 36, 7, 129, 66, 512, 11, 40, 68, 130, 19, 13, 48, 14, 72,
+      257, 21, 132, 35, 258, 26, 513, 80, 37, 25, 22, 136, 260, 264, 38, 514, 96,
+      67, 41, 144, 28, 69, 42, 516, 49, 74, 272, 160, 520, 288, 528, 192, 544, 70,
+      44, 131, 81, 50, 73, 15, 320, 133, 52, 23, 134, 384, 76, 137, 82, 56, 27, 97,
+      39, 259, 84, 138, 145, 261, 29, 43, 98, 515, 88, 140, 30, 146, 71, 262, 265,
+      161, 576, 45, 100, 640, 51, 148, 46, 75, 266, 273, 517, 104, 162, 53, 193, 152,
+      77, 164, 768, 268, 274, 518, 54, 83, 57, 521, 112, 135, 78, 289, 194, 85, 276,
+      522, 58, 168, 139, 99, 86, 60, 280, 89, 290, 529, 524, 196, 141, 101, 147, 176,
+      142, 530, 321, 31, 200, 90, 545, 292, 322, 532, 263, 149, 102, 105, 304, 296,
+      163, 92, 47, 267, 385, 546, 324, 208, 386, 150, 153, 165, 106, 55, 328, 536,
+      577, 548, 113, 154, 79, 269, 108, 578, 224, 166, 519, 552, 195, 270, 641, 523,
+      275, 580, 291, 59, 169, 560, 114, 277, 156, 87, 197, 116, 170, 61, 531, 525,
+      642, 281, 278, 526, 177, 293, 388, 91, 584, 769, 198, 172, 120, 201, 336, 62,
+      282, 143, 103, 178, 294, 93, 644, 202, 592, 323, 392, 297, 770, 107, 180, 151,
+      209, 284, 648, 94, 204, 298, 400, 608, 352, 325, 533, 155, 210, 305, 547, 300,
+      109, 184, 534, 537, 115, 167, 225, 326, 306, 772, 157, 656, 329, 110, 117, 212,
+      171, 776, 330, 226, 549, 538, 387, 308, 216, 416, 271, 279, 158, 337, 550, 672,
+      118, 332, 579, 540, 389, 173, 121, 553, 199, 784, 179, 228, 338, 312, 704, 390,
+      174, 554, 581, 393, 283, 122, 448, 353, 561, 203, 63, 340, 394, 527, 582, 556,
+      181, 295, 285, 232, 124, 205, 182, 643, 562, 286, 585, 299, 354, 211, 401, 185,
+      396, 344, 586, 645, 593, 535, 240, 206, 95, 327, 564, 800, 402, 356, 307, 301,
+      417, 213, 568, 832, 588, 186, 646, 404, 227, 896, 594, 418, 302, 649, 771, 360,
+      539, 111, 331, 214, 309, 188, 449, 217, 408, 609, 596, 551, 650, 229, 159, 420,
+      310, 541, 773, 610, 657, 333, 119, 600, 339, 218, 368, 652, 230, 391, 313, 450,
+      542, 334, 233, 555, 774, 175, 123, 658, 612, 341, 777, 220, 314, 424, 395, 673,
+      583, 355, 287, 183, 234, 125, 557, 660, 616, 342, 316, 241, 778, 563, 345, 452,
+      397, 403, 207, 674, 558, 785, 432, 357, 187, 236, 664, 624, 587, 780, 705, 126,
+      242, 565, 398, 346, 456, 358, 405, 303, 569, 244, 595, 189, 566, 676, 361, 706,
+      589, 215, 786, 647, 348, 419, 406, 464, 680, 801, 362, 590, 409, 570, 788, 597,
+      572, 219, 311, 708, 598, 601, 651, 421, 792, 802, 611, 602, 410, 231, 688, 653,
+      248, 369, 190, 364, 654, 659, 335, 480, 315, 221, 370, 613, 422, 425, 451, 614,
+      543, 235, 412, 343, 372, 775, 317, 222, 426, 453, 237, 559, 833, 804, 712, 834,
+      661, 808, 779, 617, 604, 433, 720, 816, 836, 347, 897, 243, 662, 454, 318, 675,
+      618, 898, 781, 376, 428, 665, 736, 567, 840, 625, 238, 359, 457, 399, 787, 591,
+      678, 434, 677, 349, 245, 458, 666, 620, 363, 127, 191, 782, 407, 436, 626, 571,
+      465, 681, 246, 707, 350, 599, 668, 790, 460, 249, 682, 573, 411, 803, 789, 709,
+      365, 440, 628, 689, 374, 423, 466, 793, 250, 371, 481, 574, 413, 603, 366, 468,
+      655, 900, 805, 615, 684, 710, 429, 794, 252, 373, 605, 848, 690, 713, 632, 482,
+      806, 427, 904, 414, 223, 663, 692, 835, 619, 472, 455, 796, 809, 714, 721, 837,
+      716, 864, 810, 606, 912, 722, 696, 377, 435, 817, 319, 621, 812, 484, 430, 838,
+      667, 488, 239, 378, 459, 622, 627, 437, 380, 818, 461, 496, 669, 679, 724, 841,
+      629, 351, 467, 438, 737, 251, 462, 442, 441, 469, 247, 683, 842, 738, 899, 670,
+      783, 849, 820, 728, 928, 791, 367, 901, 630, 685, 844, 633, 711, 253, 691, 824,
+      902, 686, 740, 850, 375, 444, 470, 483, 415, 485, 905, 795, 473, 634, 744, 852,
+      960, 865, 693, 797, 906, 715, 807, 474, 636, 694, 254, 717, 575, 913, 798, 811,
+      379, 697, 431, 607, 489, 866, 723, 486, 908, 718, 813, 476, 856, 839, 725, 698,
+      914, 752, 868, 819, 814, 439, 929, 490, 623, 671, 739, 916, 463, 843, 381, 497,
+      930, 821, 726, 961, 872, 492, 631, 729, 700, 443, 741, 845, 920, 382, 822, 851,
+      730, 498, 880, 742, 445, 471, 635, 932, 687, 903, 825, 500, 846, 745, 826, 732,
+      446, 962, 936, 475, 853, 867, 637, 907, 487, 695, 746, 828, 753, 854, 857, 504,
+      799, 255, 964, 909, 719, 477, 915, 638, 748, 944, 869, 491, 699, 754, 858, 478,
+      968, 383, 910, 815, 976, 870, 917, 727, 493, 873, 701, 931, 756, 860, 499, 731,
+      823, 922, 874, 918, 502, 933, 743, 760, 881, 494, 702, 921, 501, 876, 847, 992,
+      447, 733, 827, 934, 882, 937, 963, 747, 505, 855, 924, 734, 829, 965, 938, 884,
+      506, 749, 945, 966, 755, 859, 940, 830, 911, 871, 639, 888, 479, 946, 750, 969,
+      508, 861, 757, 970, 919, 875, 862, 758, 948, 977, 923, 972, 761, 877, 952, 495,
+      703, 935, 978, 883, 762, 503, 925, 878, 735, 993, 885, 939, 994, 980, 926, 764,
+      941, 967, 886, 831, 947, 507, 889, 984, 751, 942, 996, 971, 890, 509, 949, 973,
+      1000, 892, 950, 863, 759, 1008, 510, 979, 953, 763, 974, 954, 879, 981, 982,
+      927, 995, 765, 956, 887, 985, 997, 986, 943, 891, 998, 766, 511, 988, 1001,
+      951, 1002, 893, 975, 894, 1009, 955, 1004, 1010, 957, 983, 958, 987, 1012, 999,
+      1016, 767, 989, 1003, 990, 1005, 959, 1011, 1013, 895, 1006, 1014, 1017, 1018,
+      991, 1020, 1007, 1015, 1019, 1021, 1022, 1023])
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1408, 8.0]
+    rotation: 0
+    state: enabled
+- name: access_code
+  id: variable
+  parameters:
+    comment: ''
+    value: '"11100001010110101110100010010011"'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [904, 4.0]
+    rotation: 0
+    state: true
+- name: baud_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: bit_rate / 1
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [456, 4.0]
+    rotation: 0
+    state: true
+- name: bit_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: 800e3
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [544, 4.0]
+    rotation: 0
+    state: true
+- name: freq
+  id: variable
+  parameters:
+    comment: ''
+    value: 670e6
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [672, 88.0]
+    rotation: 0
+    state: enabled
+- name: frozen_pos
+  id: variable
+  parameters:
+    comment: ''
+    value: np.sort(RelSeq[RelSeq < N][:N-K])
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1400, 80.0]
+    rotation: 0
+    state: enabled
+- name: frozen_val
+  id: variable
+  parameters:
+    comment: ''
+    value: np.zeros(N-K, dtype=int)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1648, 88.0]
+    rotation: 0
+    state: enabled
+- name: payload_len
+  id: variable
+  parameters:
+    comment: ''
+    value: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [904, 68.0]
+    rotation: 0
+    state: true
+- name: qpsk
+  id: variable_constellation
+  parameters:
+    comment: ''
+    const_points: '[0.0, 1.0]'
+    dims: '1'
+    normalization: digital.constellation.NO_NORMALIZATION
+    npwr: '1.0'
+    precision: '8'
+    rot_sym: '4'
+    soft_dec_lut: None
+    sym_map: '[0, 1]'
+    type: qpsk
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [152, 4.0]
+    rotation: 0
+    state: true
+- name: rf_gain
+  id: variable_qtgui_range
+  parameters:
+    comment: ''
+    gui_hint: ''
+    label: ''
+    min_len: '200'
+    orient: QtCore.Qt.Horizontal
+    rangeType: float
+    start: '0'
+    step: '1'
+    stop: '50'
+    value: '30'
+    widget: counter_slider
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 532.0]
+    rotation: 0
+    state: enabled
+- name: rrc_filter_taps
+  id: variable_rrc_filter_taps
+  parameters:
+    alpha: '0.25'
+    comment: ''
+    gain: sps
+    ntaps: 11*sps
+    samp_rate: samp_rate
+    sym_rate: baud_rate
+    value: ''
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [768, 4.0]
+    rotation: 0
+    state: true
+- name: samp_rate
+  id: variable
+  parameters:
+    comment: ''
+    value: baud_rate * sps
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [456, 68.0]
+    rotation: 0
+    state: enabled
+- name: sps
+  id: variable
+  parameters:
+    comment: ''
+    value: '3'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [376, 72.0]
+    rotation: 0
+    state: true
+- name: sync_len
+  id: variable
+  parameters:
+    comment: ''
+    value: '32'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1648, 8.0]
+    rotation: 0
+    state: enabled
+- name: taps
+  id: variable
+  parameters:
+    comment: ''
+    value: np.array(rrc_filter_taps)
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [624, 4.0]
+    rotation: 0
+    state: true
+- name: analog_agc_xx_0
+  id: analog_agc_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    gain: '1.0'
+    max_gain: 1e3
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    rate: 1e-4
+    reference: '1.0'
+    type: complex
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [520, 364.0]
+    rotation: 0
+    state: enabled
+- name: blocks_multiply_const_vxx_0
+  id: blocks_multiply_const_vxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    const: '0.5'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    type: complex
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [976, 424.0]
+    rotation: 0
+    state: enabled
+- name: digital_constellation_soft_decoder_cf_0
+  id: digital_constellation_soft_decoder_cf
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    constellation: qpsk
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    npwr: '-1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1280, 512.0]
+    rotation: 0
+    state: enabled
+- name: digital_costas_loop_cc_0
+  id: digital_costas_loop_cc
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    order: '4'
+    use_snr: 'False'
+    w: 2*np.pi/200
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1056, 232.0]
+    rotation: 0
+    state: enabled
+- name: digital_crc32_bb_0
+  id: digital_crc32_bb
+  parameters:
+    affinity: ''
+    alias: ''
+    check: 'True'
+    comment: ''
+    lengthtagname: '"quadro"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    packed: 'False'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1800, 348.0]
+    rotation: 0
+    state: enabled
+- name: digital_symbol_sync_xx_0
+  id: digital_symbol_sync_xx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    constellation: digital.constellation_bpsk().base()
+    damping: '1.0'
+    loop_bw: '0.045'
+    max_dev: '0.01'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nfilters: '128'
+    osps: '1'
+    pfb_mf_taps: '[]'
+    resamp_type: digital.IR_MMSE_8TAP
+    sps: sps
+    ted_gain: '1.0'
+    ted_type: digital.TED_GARDNER
+    type: cc
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [688, 332.0]
+    rotation: 0
+    state: true
+- name: epy_block_0_0
+  id: epy_block
+  parameters:
+    _source_code: "import numpy as np\nimport pmt\nfrom gnuradio import gr\n\n\nclass\
+      \ blk(gr.basic_block):\n    \"\"\"\n    Find Access Code \u2014 invariante \xE0\
+      s quatro ambiguidades de fase da QPSK.\n\n    Procura o access code no fluxo\
+      \ de LLRs correlacionando, em paralelo, contra\n    as quatro vers\xF5es do\
+      \ c\xF3digo correspondentes \xE0s rota\xE7\xF5es de 0\xB0, 90\xB0, 180\xB0 e\n\
+      \    270\xB0 da constela\xE7\xE3o. Ao encontrar, desfaz a rota\xE7\xE3o no payload\
+      \ antes de\n    repass\xE1-lo adiante, de modo que o Costas Loop pode travar\
+      \ em qualquer uma\n    das quatro fases sem quebrar o enquadramento.\n    \"\
+      \"\"\n\n    def __init__(self, access_code=\"\", payload_len_in_bits=0, tag_key=\"\
+      \", threshold=0.9):\n        gr.basic_block.__init__(\n            self,\n \
+      \           name='Find Access Code',\n            in_sig=[np.float32],\n   \
+      \         out_sig=[np.float32],\n        )\n        ac = np.array([2 * int(b)\
+      \ - 1 for b in access_code], dtype=np.float32)\n        if ac.size % 2 or payload_len_in_bits\
+      \ % 2:\n            raise ValueError('access code e payload devem ter comprimento\
+      \ par')\n        self.codes = np.stack([self._rot(ac, k) for k in range(4)])\n\
+      \        self.ac_len = ac.size\n        self.pl_len = int(payload_len_in_bits)\n\
+      \        self.frame_len = self.ac_len + self.pl_len\n        self.tag_key =\
+      \ pmt.intern(tag_key)\n        self.threshold = threshold\n        if self.pl_len\
+      \ > 0:\n            # Sob os valores padr\xE3o (payload 0) o GRC instancia o\
+      \ bloco s\xF3 para\n            # inspecionar as portas; set_output_multiple(0)\
+      \ daria erro ali.\n            self.set_output_multiple(self.pl_len)\n\n   \
+      \ @staticmethod\n    def _rot(x, k):\n        \"\"\"Aplica k rota\xE7\xF5es\
+      \ de +90\xB0 ao fluxo de LLRs (cada par de LLRs = 1 s\xEDmbolo).\"\"\"\n   \
+      \     y = x.reshape(-1, 2).copy()\n        for _ in range(k % 4):\n        \
+      \    a = y[:, 0].copy()\n            y[:, 0] = y[:, 1]\n            y[:, 1]\
+      \ = -a\n        return y.reshape(-1)\n\n    def forecast(self, noutput_items,\
+      \ ninputs):\n        return [self.frame_len] * ninputs\n\n    def general_work(self,\
+      \ input_items, output_items):\n        in0 = input_items[0]\n        out0 =\
+      \ output_items[0]\n\n        if self.pl_len <= 0:\n            return 0\n  \
+      \      if in0.size < self.frame_len or out0.size < self.pl_len:\n          \
+      \  return 0\n\n        # Busca vetorizada: testa de uma vez todos os offsets\
+      \ em que ainda cabe\n        # um quadro inteiro, limitada a um per\xEDodo de\
+      \ quadro por chamada.\n        last = min(in0.size - self.frame_len, self.frame_len\
+      \ - 1)\n        w = np.lib.stride_tricks.sliding_window_view(in0[:last + self.ac_len],\
+      \ self.ac_len)\n        energy = np.abs(w).sum(axis=1)\n        metric = (w\
+      \ @ self.codes.T) / np.where(energy > 0.0, energy, np.inf)[:, None]\n\n    \
+      \    idx = np.flatnonzero(metric.max(axis=1) >= self.threshold)\n        if\
+      \ idx.size == 0:\n            self.consume(0, last + 1)   # descarta o que j\xE1\
+      \ foi testado, guarda a cauda\n            return 0\n\n        n = int(idx[0])\
+      \                      # primeiro quadro do bloco\n        k = int(np.argmax(metric[n]))\
+      \        # qual das 4 rota\xE7\xF5es casou\n        payload = in0[n + self.ac_len:\
+      \ n + self.frame_len]\n        out0[:self.pl_len] = self._rot(payload, -k) \
+      \  # desfaz a rota\xE7\xE3o\n        self.consume(0, n + self.frame_len)\n \
+      \       self.add_item_tag(0, self.nitems_written(0), self.tag_key, pmt.from_long(self.pl_len))\n\
+      \        return self.pl_len\n"
+    access_code: access_code
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    payload_len_in_bits: N
+    tag_key: '"quadro"'
+    threshold: '0.9'
+  states:
+    _io_cache: "('Find Access Code', 'blk', [('access_code', \"''\"), ('payload_len_in_bits',\
+      \ '0'), ('tag_key', \"''\"), ('threshold', '0.9')], [('0', 'float', 1)], [('0',\
+      \ 'float', 1)], '\\nFind Access Code \u2014 invariante \xE0s quatro ambiguidades\
+      \ de fase da QPSK.\\n\\nProcura o access code no fluxo de LLRs correlacionando,\
+      \ em paralelo, contra\\nas quatro vers\xF5es do c\xF3digo correspondentes \xE0\
+      s rota\xE7\xF5es de 0\xB0, 90\xB0, 180\xB0 e\\n270\xB0 da constela\xE7\xE3o.\
+      \ Ao encontrar, desfaz a rota\xE7\xE3o no payload antes de\\nrepass\xE1-lo adiante,\
+      \ de modo que o Costas Loop pode travar em qualquer uma\\ndas quatro fases sem\
+      \ quebrar o enquadramento.\\n', ['tag_key', 'threshold'])"
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1352, 344.0]
+    rotation: 0
+    state: enabled
+- name: epy_block_1
+  id: epy_block
+  parameters:
+    _source_code: "import time\n\nimport numpy as np\nimport pmt\nfrom gnuradio import\
+      \ gr\n\n\nclass blk(gr.basic_block):\n    \"\"\"\n    Monitor de BLER, vaz\xE3\
+      o e goodput, a partir das tags de comprimento\n    que j\xE1 existem no fluxograma\
+      \ original (sem precisar de CRC baseado em\n    mensagem/PDU).\n\n    Porta\
+      \ 0 (uint8, bit a bit): sa\xEDda do decodificador FEC, ANTES do CRC.\n     \
+      \   Cada tag 'quadro' marca o in\xEDcio de um quadro decodificado. N\xC3O \xE9\
+      \n        usada como rel\xF3gio (esses itens j\xE1 s\xE3o bits decodificados,\
+      \ K por\n        quadro, n\xE3o os 'bits_por_quadro_transmitido' que realmente\
+      \ passam\n        no canal) \u2014 s\xF3 para contar quadros_recebidos.\n\n\
+      \    Porta 1 (uint8, bit a bit): sa\xEDda do CRC Check (check=True). S\xF3 os\n\
+      \        quadros que passaram no CRC chegam aqui. Usada apenas para contar\n\
+      \        quadros_validos.\n\n    O tempo decorrido usado em todas as contas\
+      \ (BLER, vaz\xE3o, goodput,\n    quadros_esperados) \xE9 o tempo de PAREDE (time.monotonic()),\
+      \ n\xE3o uma\n    contagem de bits. Isso s\xF3 \xE9 v\xE1lido porque o fluxograma\
+      \ tem um\n    'throttle' for\xE7ando o ritmo real de 'taxa_de_bits' bits/s no\
+      \ canal \u2014\n    ou seja, tempo de parede \u2248 tempo de sinal. (Uma vers\xE3\
+      o anterior deste\n    bloco usava a contagem de bits decodificados na porta\
+      \ 0 como rel\xF3gio,\n    o que \xE9 ERRADO: como o decodificador entrega s\xF3\
+      \ K bits por quadro em\n    vez dos bits_por_quadro_transmitido que de fato\
+      \ passam pelo canal, o\n    tempo sa\xEDa subestimado e vaz\xE3o/goodput vinham\
+      \ inflados.)\n\n    Estrutura fixa do quadro (voc\xEA informa, o bloco n\xE3\
+      o l\xEA o encoder em\n    tempo real, mas usa esses par\xE2metros para saber\
+      \ exatamente quanto de\n    informa\xE7\xE3o real existe em cada quadro):\n\n\
+      \        access_code (bits_access_code, cru, p/ sincronismo)\n        + bloco\
+      \ codificado pelo FEC, N bits, taxa 'taxa_codigo' = K/N\n          -> decodifica\
+      \ para K = N * taxa_codigo bits, que j\xE1 cont\xEAm\n             payload +\
+      \ CRC juntos (o encoder codifica os dois juntos)\n        = bits_por_quadro_transmitido\
+      \ = access_code + N  (total no ar)\n\n    A partir disso o bloco deriva, uma\
+      \ \xFAnica vez, no __init__:\n        N (bits codificados)          = bits_por_quadro_transmitido\
+      \ - bits_access_code\n        K (bits decodificados)        = round(N * taxa_codigo)\
+      \      # payload + CRC\n        bits_informacao (payload real) = K - bits_crc\
+      \                 # sem CRC\n\n    Vaz\xE3o x goodput (por quadro correto recebido,\
+      \ i.e. que passou no CRC):\n        - vaz\xE3o   = K bits/quadro (payload +\
+      \ CRC, tudo que foi\n                    corretamente decodificado), por segundo\
+      \ de parede.\n        - goodput = bits_informacao bits/quadro (s\xF3 a informa\xE7\
+      \xE3o real,\n                    sem CRC, sem redund\xE2ncia do FEC e sem access\
+      \ code),\n                    por segundo de parede.\n\n    A cada duracao_janela_s\
+      \ segundos de parede, emite (e opcionalmente\n    imprime):\n        0 BLER\
+      \    (janela)   1 BLER    (total)\n        2 vaz\xE3o   (janela)   3 vaz\xE3\
+      o   (total)   [bit/s]\n        4 goodput (janela)   5 goodput (total)   [bit/s]\n\
+      \    \"\"\"\n\n    def __init__(self, nome_da_tag=\"quadro\", taxa_de_bits=800e3,\n\
+      \                 bits_por_quadro_transmitido=1056, bits_access_code=32,\n \
+      \                taxa_codigo=0.5, bits_crc=32,\n                 duracao_janela_s=1.0,\
+      \ duracao_aquecimento_s=0.0,\n                 imprimir_no_console=False):\n\
+      \        gr.basic_block.__init__(\n            self,\n            name=\"Monitor\
+      \ BLER/vaz\xE3o\",\n            in_sig=[np.uint8, np.uint8],\n            out_sig=[np.float32]\
+      \ * 6,\n        )\n        self.chave_tag = pmt.intern(nome_da_tag)\n      \
+      \  self.taxa_de_bits = float(taxa_de_bits)\n        self.bits_por_quadro_transmitido\
+      \ = int(bits_por_quadro_transmitido)\n        self.bits_access_code = int(bits_access_code)\n\
+      \        self.taxa_codigo = float(taxa_codigo)\n        self.bits_crc = int(bits_crc)\n\
+      \        self.duracao_janela_s = float(duracao_janela_s)\n        self.duracao_aquecimento_s\
+      \ = float(duracao_aquecimento_s)\n        self.imprimir_no_console = bool(imprimir_no_console)\n\
+      \        self.em_aquecimento = self.duracao_aquecimento_s > 0\n\n        # tamanhos\
+      \ fixos derivados da configura\xE7\xE3o do encoder (calculados\n        # uma\
+      \ \xFAnica vez, n\xE3o dependem de nenhuma tag medida em tempo real)\n     \
+      \   self.bits_codificados_por_quadro = (\n            self.bits_por_quadro_transmitido\
+      \ - self.bits_access_code)  # N\n        self.bits_decodificados_por_quadro\
+      \ = round(\n            self.bits_codificados_por_quadro * self.taxa_codigo)\
+      \       # K = payload+CRC\n        self.bits_informacao_por_quadro = (\n   \
+      \         self.bits_decodificados_por_quadro - self.bits_crc)        # payload\
+      \ real\n\n        # contadores acumulados (s\xF3 contagens, n\xE3o bits \u2014\
+      \ o rel\xF3gio \xE9 o\n        # tempo de parede, ver classe docstring)\n  \
+      \      self.quadros_recebidos = 0  # quadros que chegaram ao CRC (porta 0)\n\
+      \        self.quadros_validos = 0    # quadros que passaram no CRC (porta 1)\n\
+      \n        # estado do \xFAltimo relat\xF3rio\n        self._ultimo_estado =\
+      \ (0, 0)\n        self._tempo_parede_inicio = time.monotonic()\n        self._tempo_parede_ultimo_relatorio\
+      \ = self._tempo_parede_inicio\n        self._proximo_relatorio_em_segundos =\
+      \ self.duracao_janela_s\n        # \xFAltimo conjunto de valores calculado (bler\
+      \ x2, vazao x2, goodput x2);\n        # \xE9 isso que sai em TODA chamada de\
+      \ general_work que consumiu bits\n        # novos (repetido at\xE9 a pr\xF3\
+      xima janela fechar), pra manter o fluxo\n        # de itens constante e n\xE3\
+      o deixar os sinks Qt \"famintos\" esperando\n        # o buffer encher.\n  \
+      \      self._ultimos_valores = [float(\"nan\"), float(\"nan\"), 0.0, 0.0, 0.0,\
+      \ 0.0]\n\n    def forecast(self, noutput_items, ninputs):\n        # N\xE3o\
+      \ exige um m\xEDnimo de itens de entrada: o bloco s\xF3 reporta\n        # quando\
+      \ alguma das portas trouxer dados, e n\xE3o fica em polling.\n        return\
+      \ [0, 0]\n\n    # ---- contagem via tags (roda no general_work, thread do scheduler)\n\
+      \    def general_work(self, input_items, output_items):\n        n_bits_porta0\
+      \ = len(input_items[0])\n        if n_bits_porta0:\n            self.quadros_recebidos\
+      \ += len(\n                self.get_tags_in_window(0, 0, n_bits_porta0, self.chave_tag))\n\
+      \            self.consume(0, n_bits_porta0)\n\n        n_bits_porta1 = len(input_items[1])\n\
+      \        if n_bits_porta1:\n            self.quadros_validos += len(\n     \
+      \           self.get_tags_in_window(1, 0, n_bits_porta1, self.chave_tag))\n\
+      \            self.consume(1, n_bits_porta1)\n\n        agora = time.monotonic()\n\
+      \        tempo_total_decorrido_s = agora - self._tempo_parede_inicio\n\n   \
+      \     if self.em_aquecimento and tempo_total_decorrido_s >= self.duracao_aquecimento_s:\n\
+      \            self.em_aquecimento = False\n            self.quadros_recebidos\
+      \ = 0\n            self.quadros_validos = 0\n            self._ultimo_estado\
+      \ = (0, 0)\n            self._tempo_parede_inicio = agora\n            self._tempo_parede_ultimo_relatorio\
+      \ = agora\n            self._proximo_relatorio_em_segundos = self.duracao_janela_s\n\
+      \            if self.imprimir_no_console:\n                print(f\"[aquecimento]\
+      \ {tempo_total_decorrido_s:.2f}s de \"\n                      f\"sinal descartados;\
+      \ contadores zerados\", flush=True)\n            return 0\n\n        if tempo_total_decorrido_s\
+      \ >= self._proximo_relatorio_em_segundos:\n            self._proximo_relatorio_em_segundos\
+      \ = (\n                tempo_total_decorrido_s // self.duracao_janela_s + 1\n\
+      \            ) * self.duracao_janela_s\n            self._ultimos_valores =\
+      \ self._monta_relatorio(agora)\n\n        # emite o \xFAltimo valor conhecido\
+      \ sempre que houve sinal novo nesta\n        # chamada (n\xE3o s\xF3 quando\
+      \ a janela fecha), pra manter o buffer de\n        # sa\xEDda sempre alimentado\
+      \ e os sinks Qt atualizando sem espera\n        # inicial. Se n\xE3o consumiu\
+      \ nada, n\xE3o produz nada (evita rodar em\n        # loop sem sinal de entrada).\n\
+      \        if (n_bits_porta0 or n_bits_porta1) and len(output_items[0]) >= 1:\n\
+      \            for indice_saida, valor in enumerate(self._ultimos_valores):\n\
+      \                output_items[indice_saida][0] = valor\n            return 1\n\
+      \        return 0\n\n    def _calcula_metricas(self, duracao_s, quadros_recebidos,\
+      \ quadros_validos):\n        quadros_esperados = (duracao_s * self.taxa_de_bits\n\
+      \                              / self.bits_por_quadro_transmitido\n        \
+      \                      if duracao_s else 0.0)\n        taxa_erro_bloco = (1.0\
+      \ - quadros_validos / quadros_recebidos\n                            if quadros_recebidos\
+      \ else float(\"nan\"))\n        # vaz\xE3o: todos os bits corretamente decodificados\
+      \ (payload+CRC) dos\n        # quadros que passaram no CRC \u2014 tamanho fixo\
+      \ por quadro, vindo da\n        # configura\xE7\xE3o do encoder, dividido pelo\
+      \ tempo de parede real.\n        vazao_bps = (quadros_validos * self.bits_decodificados_por_quadro\n\
+      \                     / duracao_s if duracao_s else 0.0)\n        # goodput:\
+      \ s\xF3 a informa\xE7\xE3o real, sem CRC, sem redund\xE2ncia do FEC e\n    \
+      \    # sem access code \u2014 tamb\xE9m um tamanho fixo por quadro.\n      \
+      \  goodput_bps = (quadros_validos * self.bits_informacao_por_quadro\n      \
+      \                 / duracao_s if duracao_s else 0.0)\n        return quadros_esperados,\
+      \ taxa_erro_bloco, vazao_bps, goodput_bps\n\n    def _monta_relatorio(self,\
+      \ agora):\n        recebidos_ultimo, validos_ultimo = self._ultimo_estado\n\n\
+      \        linhas = (\n            (\"janela\",\n             agora - self._tempo_parede_ultimo_relatorio,\n\
+      \             self.quadros_recebidos - recebidos_ultimo,\n             self.quadros_validos\
+      \ - validos_ultimo),\n            (\"total \",\n             agora - self._tempo_parede_inicio,\n\
+      \             self.quadros_recebidos,\n             self.quadros_validos),\n\
+      \        )\n\n        # calcula e imprime janela/total, guardando os valores\
+      \ por m\xE9trica\n        metricas = {\"bler\": [], \"vazao\": [], \"goodput\"\
+      : []}\n        for rotulo, duracao_s, quadros_recebidos, quadros_validos in\
+      \ linhas:\n            (quadros_esperados, taxa_erro_bloco, vazao_bps,\n   \
+      \          goodput_bps) = self._calcula_metricas(\n                duracao_s,\
+      \ quadros_recebidos, quadros_validos)\n            metricas[\"bler\"].append(taxa_erro_bloco)\n\
+      \            metricas[\"vazao\"].append(vazao_bps)\n            metricas[\"\
+      goodput\"].append(goodput_bps)\n            if self.imprimir_no_console:\n \
+      \               print(\n                    f\"[{rotulo}] parede={duracao_s:7.2f}s\
+      \  \"\n                    f\"esperados={quadros_esperados:9.1f} \"\n      \
+      \              f\"recebidos={quadros_recebidos:7d} \"\n                    f\"\
+      v\xE1lidos={quadros_validos:7d}  \"\n                    f\"BLER={taxa_erro_bloco:.3e}\
+      \  \"\n                    f\"vaz\xE3o={vazao_bps / 1e3:7.1f} kb/s \"\n    \
+      \                f\"goodput={goodput_bps / 1e3:7.1f} kb/s\",\n             \
+      \       flush=True,\n                )\n\n        self._ultimo_estado = (self.quadros_recebidos,\
+      \ self.quadros_validos)\n        self._tempo_parede_ultimo_relatorio = agora\n\
+      \n        # ordem de sa\xEDda: bler(janela,total), vazao(janela,total),\n  \
+      \      # goodput(janela,total)\n        return metricas[\"bler\"] + metricas[\"\
+      vazao\"] + metricas[\"goodput\"]"
+    affinity: ''
+    alias: ''
+    bits_access_code: '32'
+    bits_crc: '32'
+    bits_por_quadro_transmitido: '1056'
+    comment: ''
+    duracao_aquecimento_s: '0.0'
+    duracao_janela_s: 1/8
+    imprimir_no_console: 'False'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nome_da_tag: '''quadro'''
+    taxa_codigo: 1/2
+    taxa_de_bits: '800000.0'
+  states:
+    _io_cache: "('Monitor BLER/vaz\xE3o', 'blk', [('nome_da_tag', \"'quadro'\"), ('taxa_de_bits',\
+      \ '800000.0'), ('bits_por_quadro_transmitido', '1056'), ('bits_access_code',\
+      \ '32'), ('taxa_codigo', '0.5'), ('bits_crc', '32'), ('duracao_janela_s', '1.0'),\
+      \ ('duracao_aquecimento_s', '0.0'), ('imprimir_no_console', 'False')], [('0',\
+      \ 'byte', 1), ('1', 'byte', 1)], [('0', 'float', 1), ('1', 'float', 1), ('2',\
+      \ 'float', 1), ('3', 'float', 1), ('4', 'float', 1), ('5', 'float', 1)], \"\\\
+      nMonitor de BLER, vaz\xE3o e goodput, a partir das tags de comprimento\\nque\
+      \ j\xE1 existem no fluxograma original (sem precisar de CRC baseado em\\nmensagem/PDU).\\\
+      n\\nPorta 0 (uint8, bit a bit): sa\xEDda do decodificador FEC, ANTES do CRC.\\\
+      n    Cada tag 'quadro' marca o in\xEDcio de um quadro decodificado. N\xC3O \xE9\
+      \\n    usada como rel\xF3gio (esses itens j\xE1 s\xE3o bits decodificados, K\
+      \ por\\n    quadro, n\xE3o os 'bits_por_quadro_transmitido' que realmente passam\\\
+      n    no canal) \u2014 s\xF3 para contar quadros_recebidos.\\n\\nPorta 1 (uint8,\
+      \ bit a bit): sa\xEDda do CRC Check (check=True). S\xF3 os\\n    quadros que\
+      \ passaram no CRC chegam aqui. Usada apenas para contar\\n    quadros_validos.\\\
+      n\\nO tempo decorrido usado em todas as contas (BLER, vaz\xE3o, goodput,\\nquadros_esperados)\
+      \ \xE9 o tempo de PAREDE (time.monotonic()), n\xE3o uma\\ncontagem de bits.\
+      \ Isso s\xF3 \xE9 v\xE1lido porque o fluxograma tem um\\n'throttle' for\xE7\
+      ando o ritmo real de 'taxa_de_bits' bits/s no canal \u2014\\nou seja, tempo\
+      \ de parede \u2248 tempo de sinal. (Uma vers\xE3o anterior deste\\nbloco usava\
+      \ a contagem de bits decodificados na porta 0 como rel\xF3gio,\\no que \xE9\
+      \ ERRADO: como o decodificador entrega s\xF3 K bits por quadro em\\nvez dos\
+      \ bits_por_quadro_transmitido que de fato passam pelo canal, o\\ntempo sa\xED\
+      a subestimado e vaz\xE3o/goodput vinham inflados.)\\n\\nEstrutura fixa do quadro\
+      \ (voc\xEA informa, o bloco n\xE3o l\xEA o encoder em\\ntempo real, mas usa\
+      \ esses par\xE2metros para saber exatamente quanto de\\ninforma\xE7\xE3o real\
+      \ existe em cada quadro):\\n\\n    access_code (bits_access_code, cru, p/ sincronismo)\\\
+      n    + bloco codificado pelo FEC, N bits, taxa 'taxa_codigo' = K/N\\n      ->\
+      \ decodifica para K = N * taxa_codigo bits, que j\xE1 cont\xEAm\\n         payload\
+      \ + CRC juntos (o encoder codifica os dois juntos)\\n    = bits_por_quadro_transmitido\
+      \ = access_code + N  (total no ar)\\n\\nA partir disso o bloco deriva, uma \xFA\
+      nica vez, no __init__:\\n    N (bits codificados)          = bits_por_quadro_transmitido\
+      \ - bits_access_code\\n    K (bits decodificados)        = round(N * taxa_codigo)\
+      \      # payload + CRC\\n    bits_informacao (payload real) = K - bits_crc \
+      \                # sem CRC\\n\\nVaz\xE3o x goodput (por quadro correto recebido,\
+      \ i.e. que passou no CRC):\\n    - vaz\xE3o   = K bits/quadro (payload + CRC,\
+      \ tudo que foi\\n                corretamente decodificado), por segundo de\
+      \ parede.\\n    - goodput = bits_informacao bits/quadro (s\xF3 a informa\xE7\
+      \xE3o real,\\n                sem CRC, sem redund\xE2ncia do FEC e sem access\
+      \ code),\\n                por segundo de parede.\\n\\nA cada duracao_janela_s\
+      \ segundos de parede, emite (e opcionalmente\\nimprime):\\n    0 BLER    (janela)\
+      \   1 BLER    (total)\\n    2 vaz\xE3o   (janela)   3 vaz\xE3o   (total)   [bit/s]\\\
+      n    4 goodput (janela)   5 goodput (total)   [bit/s]\\n\", ['bits_access_code',\
+      \ 'bits_crc', 'bits_por_quadro_transmitido', 'duracao_aquecimento_s', 'duracao_janela_s',\
+      \ 'imprimir_no_console', 'taxa_codigo', 'taxa_de_bits'])"
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1864, 96.0]
+    rotation: 0
+    state: enabled
+- name: fec_extended_tagged_decoder_0
+  id: fec_extended_tagged_decoder
+  parameters:
+    affinity: ''
+    alias: ''
+    ann: None
+    comment: ''
+    decoder_list: PC_dec
+    lentagname: '"quadro"'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    mtu: '1500'
+    puncpat: '''11'''
+    value: fec_extended_decoder
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1568, 448.0]
+    rotation: 0
+    state: enabled
+- name: import_0
+  id: import
+  parameters:
+    alias: ''
+    comment: ''
+    imports: import numpy as np
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [328, 8.0]
+    rotation: 0
+    state: true
+- name: interp_fir_filter_xxx_1
+  id: interp_fir_filter_xxx
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    interp: '1'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    samp_delay: '0'
+    taps: taps/sps
+    type: ccc
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [296, 380.0]
+    rotation: 0
+    state: enabled
+- name: network_tcp_sink_0
+  id: network_tcp_sink
+  parameters:
+    addr: 127.0.0.1
+    affinity: ''
+    alias: ''
+    comment: ''
+    mode: '2'
+    port: '2000'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2144, 500.0]
+    rotation: 0
+    state: disabled
+- name: osmosdr_source_0
+  id: osmosdr_source
+  parameters:
+    affinity: ''
+    alias: ''
+    ant0: ''
+    ant1: ''
+    ant10: ''
+    ant11: ''
+    ant12: ''
+    ant13: ''
+    ant14: ''
+    ant15: ''
+    ant16: ''
+    ant17: ''
+    ant18: ''
+    ant19: ''
+    ant2: ''
+    ant20: ''
+    ant21: ''
+    ant22: ''
+    ant23: ''
+    ant24: ''
+    ant25: ''
+    ant26: ''
+    ant27: ''
+    ant28: ''
+    ant29: ''
+    ant3: ''
+    ant30: ''
+    ant31: ''
+    ant4: ''
+    ant5: ''
+    ant6: ''
+    ant7: ''
+    ant8: ''
+    ant9: ''
+    args: rtl=0
+    bb_gain0: '0'
+    bb_gain1: '20'
+    bb_gain10: '20'
+    bb_gain11: '20'
+    bb_gain12: '20'
+    bb_gain13: '20'
+    bb_gain14: '20'
+    bb_gain15: '20'
+    bb_gain16: '20'
+    bb_gain17: '20'
+    bb_gain18: '20'
+    bb_gain19: '20'
+    bb_gain2: '20'
+    bb_gain20: '20'
+    bb_gain21: '20'
+    bb_gain22: '20'
+    bb_gain23: '20'
+    bb_gain24: '20'
+    bb_gain25: '20'
+    bb_gain26: '20'
+    bb_gain27: '20'
+    bb_gain28: '20'
+    bb_gain29: '20'
+    bb_gain3: '20'
+    bb_gain30: '20'
+    bb_gain31: '20'
+    bb_gain4: '20'
+    bb_gain5: '20'
+    bb_gain6: '20'
+    bb_gain7: '20'
+    bb_gain8: '20'
+    bb_gain9: '20'
+    bw0: '0'
+    bw1: '0'
+    bw10: '0'
+    bw11: '0'
+    bw12: '0'
+    bw13: '0'
+    bw14: '0'
+    bw15: '0'
+    bw16: '0'
+    bw17: '0'
+    bw18: '0'
+    bw19: '0'
+    bw2: '0'
+    bw20: '0'
+    bw21: '0'
+    bw22: '0'
+    bw23: '0'
+    bw24: '0'
+    bw25: '0'
+    bw26: '0'
+    bw27: '0'
+    bw28: '0'
+    bw29: '0'
+    bw3: '0'
+    bw30: '0'
+    bw31: '0'
+    bw4: '0'
+    bw5: '0'
+    bw6: '0'
+    bw7: '0'
+    bw8: '0'
+    bw9: '0'
+    clock_source0: ''
+    clock_source1: ''
+    clock_source2: ''
+    clock_source3: ''
+    clock_source4: ''
+    clock_source5: ''
+    clock_source6: ''
+    clock_source7: ''
+    comment: ''
+    corr0: '0'
+    corr1: '0'
+    corr10: '0'
+    corr11: '0'
+    corr12: '0'
+    corr13: '0'
+    corr14: '0'
+    corr15: '0'
+    corr16: '0'
+    corr17: '0'
+    corr18: '0'
+    corr19: '0'
+    corr2: '0'
+    corr20: '0'
+    corr21: '0'
+    corr22: '0'
+    corr23: '0'
+    corr24: '0'
+    corr25: '0'
+    corr26: '0'
+    corr27: '0'
+    corr28: '0'
+    corr29: '0'
+    corr3: '0'
+    corr30: '0'
+    corr31: '0'
+    corr4: '0'
+    corr5: '0'
+    corr6: '0'
+    corr7: '0'
+    corr8: '0'
+    corr9: '0'
+    dc_offset_mode0: '0'
+    dc_offset_mode1: '0'
+    dc_offset_mode10: '0'
+    dc_offset_mode11: '0'
+    dc_offset_mode12: '0'
+    dc_offset_mode13: '0'
+    dc_offset_mode14: '0'
+    dc_offset_mode15: '0'
+    dc_offset_mode16: '0'
+    dc_offset_mode17: '0'
+    dc_offset_mode18: '0'
+    dc_offset_mode19: '0'
+    dc_offset_mode2: '0'
+    dc_offset_mode20: '0'
+    dc_offset_mode21: '0'
+    dc_offset_mode22: '0'
+    dc_offset_mode23: '0'
+    dc_offset_mode24: '0'
+    dc_offset_mode25: '0'
+    dc_offset_mode26: '0'
+    dc_offset_mode27: '0'
+    dc_offset_mode28: '0'
+    dc_offset_mode29: '0'
+    dc_offset_mode3: '0'
+    dc_offset_mode30: '0'
+    dc_offset_mode31: '0'
+    dc_offset_mode4: '0'
+    dc_offset_mode5: '0'
+    dc_offset_mode6: '0'
+    dc_offset_mode7: '0'
+    dc_offset_mode8: '0'
+    dc_offset_mode9: '0'
+    freq0: freq
+    freq1: 100e6
+    freq10: 100e6
+    freq11: 100e6
+    freq12: 100e6
+    freq13: 100e6
+    freq14: 100e6
+    freq15: 100e6
+    freq16: 100e6
+    freq17: 100e6
+    freq18: 100e6
+    freq19: 100e6
+    freq2: 100e6
+    freq20: 100e6
+    freq21: 100e6
+    freq22: 100e6
+    freq23: 100e6
+    freq24: 100e6
+    freq25: 100e6
+    freq26: 100e6
+    freq27: 100e6
+    freq28: 100e6
+    freq29: 100e6
+    freq3: 100e6
+    freq30: 100e6
+    freq31: 100e6
+    freq4: 100e6
+    freq5: 100e6
+    freq6: 100e6
+    freq7: 100e6
+    freq8: 100e6
+    freq9: 100e6
+    gain0: rf_gain
+    gain1: '10'
+    gain10: '10'
+    gain11: '10'
+    gain12: '10'
+    gain13: '10'
+    gain14: '10'
+    gain15: '10'
+    gain16: '10'
+    gain17: '10'
+    gain18: '10'
+    gain19: '10'
+    gain2: '10'
+    gain20: '10'
+    gain21: '10'
+    gain22: '10'
+    gain23: '10'
+    gain24: '10'
+    gain25: '10'
+    gain26: '10'
+    gain27: '10'
+    gain28: '10'
+    gain29: '10'
+    gain3: '10'
+    gain30: '10'
+    gain31: '10'
+    gain4: '10'
+    gain5: '10'
+    gain6: '10'
+    gain7: '10'
+    gain8: '10'
+    gain9: '10'
+    gain_mode0: 'False'
+    gain_mode1: 'False'
+    gain_mode10: 'False'
+    gain_mode11: 'False'
+    gain_mode12: 'False'
+    gain_mode13: 'False'
+    gain_mode14: 'False'
+    gain_mode15: 'False'
+    gain_mode16: 'False'
+    gain_mode17: 'False'
+    gain_mode18: 'False'
+    gain_mode19: 'False'
+    gain_mode2: 'False'
+    gain_mode20: 'False'
+    gain_mode21: 'False'
+    gain_mode22: 'False'
+    gain_mode23: 'False'
+    gain_mode24: 'False'
+    gain_mode25: 'False'
+    gain_mode26: 'False'
+    gain_mode27: 'False'
+    gain_mode28: 'False'
+    gain_mode29: 'False'
+    gain_mode3: 'False'
+    gain_mode30: 'False'
+    gain_mode31: 'False'
+    gain_mode4: 'False'
+    gain_mode5: 'False'
+    gain_mode6: 'False'
+    gain_mode7: 'False'
+    gain_mode8: 'False'
+    gain_mode9: 'False'
+    if_gain0: '0'
+    if_gain1: '20'
+    if_gain10: '20'
+    if_gain11: '20'
+    if_gain12: '20'
+    if_gain13: '20'
+    if_gain14: '20'
+    if_gain15: '20'
+    if_gain16: '20'
+    if_gain17: '20'
+    if_gain18: '20'
+    if_gain19: '20'
+    if_gain2: '20'
+    if_gain20: '20'
+    if_gain21: '20'
+    if_gain22: '20'
+    if_gain23: '20'
+    if_gain24: '20'
+    if_gain25: '20'
+    if_gain26: '20'
+    if_gain27: '20'
+    if_gain28: '20'
+    if_gain29: '20'
+    if_gain3: '20'
+    if_gain30: '20'
+    if_gain31: '20'
+    if_gain4: '20'
+    if_gain5: '20'
+    if_gain6: '20'
+    if_gain7: '20'
+    if_gain8: '20'
+    if_gain9: '20'
+    iq_balance_mode0: '0'
+    iq_balance_mode1: '0'
+    iq_balance_mode10: '0'
+    iq_balance_mode11: '0'
+    iq_balance_mode12: '0'
+    iq_balance_mode13: '0'
+    iq_balance_mode14: '0'
+    iq_balance_mode15: '0'
+    iq_balance_mode16: '0'
+    iq_balance_mode17: '0'
+    iq_balance_mode18: '0'
+    iq_balance_mode19: '0'
+    iq_balance_mode2: '0'
+    iq_balance_mode20: '0'
+    iq_balance_mode21: '0'
+    iq_balance_mode22: '0'
+    iq_balance_mode23: '0'
+    iq_balance_mode24: '0'
+    iq_balance_mode25: '0'
+    iq_balance_mode26: '0'
+    iq_balance_mode27: '0'
+    iq_balance_mode28: '0'
+    iq_balance_mode29: '0'
+    iq_balance_mode3: '0'
+    iq_balance_mode30: '0'
+    iq_balance_mode31: '0'
+    iq_balance_mode4: '0'
+    iq_balance_mode5: '0'
+    iq_balance_mode6: '0'
+    iq_balance_mode7: '0'
+    iq_balance_mode8: '0'
+    iq_balance_mode9: '0'
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    nchan: '1'
+    num_mboards: '1'
+    sample_rate: samp_rate
+    sync: sync
+    time_source0: ''
+    time_source1: ''
+    time_source2: ''
+    time_source3: ''
+    time_source4: ''
+    time_source5: ''
+    time_source6: ''
+    time_source7: ''
+    type: fc32
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [56, 300.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_eye_sink_x_0
+  id: qtgui_eye_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: blue
+    color10: blue
+    color2: blue
+    color3: blue
+    color4: blue
+    color5: blue
+    color6: blue
+    color7: blue
+    color8: blue
+    color9: blue
+    comment: ''
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: tabs@1
+    label1: Signal 1
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    nconnections: '1'
+    samp_per_symbol: sps
+    size: 100*sps
+    srate: samp_rate
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: complex
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '3.0'
+    ymin: '-3.0'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [568, 524.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_number_sink_taxas
+  id: qtgui_number_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    autoscale: 'False'
+    avg: '0'
+    color1: ("blue", "red")
+    color10: ("black", "black")
+    color2: ("black", "black")
+    color3: ("black", "black")
+    color4: ("black", "black")
+    color5: ("black", "black")
+    color6: ("black", "black")
+    color7: ("black", "black")
+    color8: ("black", "black")
+    color9: ("black", "black")
+    comment: ''
+    factor1: '1'
+    factor10: '1'
+    factor2: '1'
+    factor3: '1'
+    factor4: '1'
+    factor5: '1'
+    factor6: '1'
+    factor7: '1'
+    factor8: '1'
+    factor9: '1'
+    graph_type: qtgui.NUM_GRAPH_HORIZ
+    gui_hint: tabs@2
+    label1: '"BLER (janela)"'
+    label10: '""'
+    label2: '"BLER (total)"'
+    label3: '"BLER (total)"'
+    label4: '"FER (total)"'
+    label5: '""'
+    label6: '""'
+    label7: '""'
+    label8: '""'
+    label9: '""'
+    max: '1'
+    min: '0'
+    name: '"Taxa de erro de bloco"'
+    nconnections: '2'
+    type: float
+    unit1: '""'
+    unit10: '""'
+    unit2: '""'
+    unit3: '""'
+    unit4: '""'
+    unit5: '""'
+    unit6: '""'
+    unit7: '""'
+    unit8: '""'
+    unit9: '""'
+    update_time: '0.10'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2152, 72.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_number_sink_vazao
+  id: qtgui_number_sink
+  parameters:
+    affinity: ''
+    alias: ''
+    autoscale: 'False'
+    avg: '0'
+    color1: ("blue", "red")
+    color10: ("black", "black")
+    color2: ("black", "black")
+    color3: ("blue", "red")
+    color4: ("black", "black")
+    color5: ("black", "black")
+    color6: ("black", "black")
+    color7: ("black", "black")
+    color8: ("black", "black")
+    color9: ("black", "black")
+    comment: ''
+    factor1: 1e-3
+    factor10: '1'
+    factor2: 1e-3
+    factor3: 1e-3
+    factor4: 1e-3
+    factor5: '1'
+    factor6: '1'
+    factor7: '1'
+    factor8: '1'
+    factor9: '1'
+    graph_type: qtgui.NUM_GRAPH_HORIZ
+    gui_hint: tabs@2
+    label1: "\"vaz\xE3o (janela)\""
+    label10: '""'
+    label2: "\"vaz\xE3o (total)\""
+    label3: '"goodput (janela)"'
+    label4: '"goodput (total)"'
+    label5: '""'
+    label6: '""'
+    label7: '""'
+    label8: '""'
+    label9: '""'
+    max: bit_rate/1e3
+    min: '0'
+    name: "\"Vaz\xE3o (barra = fra\xE7\xE3o da taxa de bits no canal)\""
+    nconnections: '4'
+    type: float
+    unit1: '"kb/s"'
+    unit10: '""'
+    unit2: '"kb/s"'
+    unit3: '"kb/s"'
+    unit4: '"kb/s"'
+    unit5: '""'
+    unit6: '""'
+    unit7: '""'
+    unit8: '""'
+    unit9: '""'
+    update_time: '0.10'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [2152, 160.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_sink_x_1
+  id: qtgui_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    bw: baud_rate
+    comment: ''
+    fc: '0'
+    fftsize: '1024'
+    gui_hint: tabs@0
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    name: '""'
+    plotconst: 'True'
+    plotfreq: 'True'
+    plottime: 'True'
+    plotwaterfall: 'True'
+    rate: '10'
+    showports: 'False'
+    showrf: 'False'
+    type: complex
+    wintype: window.WIN_BLACKMAN_hARRIS
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1288, 192.0]
+    rotation: 0
+    state: enabled
+- name: qtgui_time_sink_x_0_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: ''
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: tabs@1
+    label1: Signal 1
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '""'
+    nconnections: '1'
+    size: '1024'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: complex
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '2.0'
+    ymin: '-2.0'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [576, 220.0]
+    rotation: 0
+    state: true
+- name: qtgui_time_sink_x_0_0_0
+  id: qtgui_time_sink_x
+  parameters:
+    affinity: ''
+    alias: ''
+    alpha1: '1.0'
+    alpha10: '1.0'
+    alpha2: '1.0'
+    alpha3: '1.0'
+    alpha4: '1.0'
+    alpha5: '1.0'
+    alpha6: '1.0'
+    alpha7: '1.0'
+    alpha8: '1.0'
+    alpha9: '1.0'
+    autoscale: 'False'
+    axislabels: 'True'
+    color1: blue
+    color10: dark blue
+    color2: red
+    color3: green
+    color4: black
+    color5: cyan
+    color6: magenta
+    color7: yellow
+    color8: dark red
+    color9: dark green
+    comment: ''
+    ctrlpanel: 'False'
+    entags: 'True'
+    grid: 'False'
+    gui_hint: tabs@0
+    label1: Signal 1
+    label10: Signal 10
+    label2: Signal 2
+    label3: Signal 3
+    label4: Signal 4
+    label5: Signal 5
+    label6: Signal 6
+    label7: Signal 7
+    label8: Signal 8
+    label9: Signal 9
+    legend: 'True'
+    marker1: '-1'
+    marker10: '-1'
+    marker2: '-1'
+    marker3: '-1'
+    marker4: '-1'
+    marker5: '-1'
+    marker6: '-1'
+    marker7: '-1'
+    marker8: '-1'
+    marker9: '-1'
+    name: '""'
+    nconnections: '1'
+    size: '1024'
+    srate: samp_rate
+    stemplot: 'False'
+    style1: '1'
+    style10: '1'
+    style2: '1'
+    style3: '1'
+    style4: '1'
+    style5: '1'
+    style6: '1'
+    style7: '1'
+    style8: '1'
+    style9: '1'
+    tr_chan: '0'
+    tr_delay: '0'
+    tr_level: '0.0'
+    tr_mode: qtgui.TRIG_MODE_FREE
+    tr_slope: qtgui.TRIG_SLOPE_POS
+    tr_tag: '""'
+    type: float
+    update_time: '0.10'
+    width1: '1'
+    width10: '1'
+    width2: '1'
+    width3: '1'
+    width4: '1'
+    width5: '1'
+    width6: '1'
+    width7: '1'
+    width8: '1'
+    width9: '1'
+    ylabel: Amplitude
+    ymax: '10.0'
+    ymin: '-10.0'
+    yunit: '""'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1568, 240.0]
+    rotation: 0
+    state: enabled
+- name: tabs
+  id: qtgui_tab_widget
+  parameters:
+    alias: ''
+    comment: ''
+    gui_hint: 3,0,20,1
+    label0: Receptor final
+    label1: Receptor inicial
+    label10: Tab 10
+    label11: Tab 11
+    label12: Tab 12
+    label13: Tab 13
+    label14: Tab 14
+    label15: Tab 15
+    label16: Tab 16
+    label17: Tab 17
+    label18: Tab 18
+    label19: Tab 19
+    label2: "M\xE9tricas"
+    label3: Tab 3
+    label4: Tab 4
+    label5: Tab 5
+    label6: Tab 6
+    label7: Tab 7
+    label8: Tab 8
+    label9: Tab 9
+    num_tabs: '3'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [544, 68.0]
+    rotation: 0
+    state: true
+
+connections:
+- [analog_agc_xx_0, '0', digital_symbol_sync_xx_0, '0']
+- [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
+- [digital_constellation_soft_decoder_cf_0, '0', epy_block_0_0, '0']
+- [digital_costas_loop_cc_0, '0', digital_constellation_soft_decoder_cf_0, '0']
+- [digital_costas_loop_cc_0, '0', qtgui_sink_x_1, '0']
+- [digital_crc32_bb_0, '0', epy_block_1, '1']
+- [digital_symbol_sync_xx_0, '0', blocks_multiply_const_vxx_0, '0']
+- [epy_block_0_0, '0', fec_extended_tagged_decoder_0, '0']
+- [epy_block_0_0, '0', qtgui_time_sink_x_0_0_0, '0']
+- [epy_block_1, '0', qtgui_number_sink_taxas, '0']
+- [epy_block_1, '1', qtgui_number_sink_taxas, '1']
+- [epy_block_1, '2', qtgui_number_sink_vazao, '0']
+- [epy_block_1, '3', qtgui_number_sink_vazao, '1']
+- [epy_block_1, '4', qtgui_number_sink_vazao, '2']
+- [epy_block_1, '5', qtgui_number_sink_vazao, '3']
+- [fec_extended_tagged_decoder_0, '0', digital_crc32_bb_0, '0']
+- [fec_extended_tagged_decoder_0, '0', epy_block_1, '0']
+- [interp_fir_filter_xxx_1, '0', analog_agc_xx_0, '0']
+- [interp_fir_filter_xxx_1, '0', qtgui_eye_sink_x_0, '0']
+- [interp_fir_filter_xxx_1, '0', qtgui_time_sink_x_0_0, '0']
+- [osmosdr_source_0, '0', interp_fir_filter_xxx_1, '0']
+
+metadata:
+  file_format: 1
+  grc_version: 3.10.12.0
