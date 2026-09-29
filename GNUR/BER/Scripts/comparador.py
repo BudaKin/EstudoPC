@@ -35,7 +35,7 @@ print(f"Preâmbulo:  {ini} B (esperado {H})")
 print(f"Payload:    {pay_len} B (esperado {P})")
 print(f"Pós-âmbulo: {len(rx) - fim} B (esperado {T})")
 ber_val = err / max(n, 1)
-print(f"BER payload: {ber_val*100:.2e}%  ({err} bits errados / {n})")
+print(f"BER payload: {ber_val:.2e}  ({err} bits errados / {n})")
 if abs(pay_len - P) > 0.05 * P:
     print(f"ATENÇÃO: payload {pay_len - P:+d} B, fora da tolerância de 5%; "
           "borda do preâmbulo/pós-âmbulo pode ter sido mal detectada.")
