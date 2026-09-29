@@ -284,7 +284,7 @@ GNUR/*
 # Exceções apenas para os arquivos importantes do diretório GNUR
 !GNUR/alice.txt
 !GNUR/5gqpsk.grc
-!GNUR/5gqpsk-c.grc
+!GNUR/5gqpsk-ber.grc
 
 # Organizando as pastas novas
 !GNUR/BLER_Vazao/
@@ -299,6 +299,11 @@ GNUR/BER/*
 !GNUR/BER/rx_BER.grc
 !GNUR/BER/tx_BER.grc
 
+!GNUR/BER/comparador.py
+!GNUR/BER/loopback.py
+!GNUR/BER/run.py
 
+!GNUR/BER/Scripts/
+!GNUR/BLER_Vazao/Scripts/
 
 # End of https://www.toptal.com/developers/gitignore/api/python,venv,octave,linux,windows,visualstudiocode
