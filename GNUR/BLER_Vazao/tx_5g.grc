@@ -380,25 +380,6 @@ blocks:
     coordinate: [624, 4.0]
     rotation: 0
     state: true
-- name: analog_random_uniform_source_x_0
-  id: analog_random_uniform_source_x
-  parameters:
-    affinity: ''
-    alias: ''
-    comment: ''
-    maximum: '2'
-    maxoutbuf: '0'
-    minimum: '0'
-    minoutbuf: '0'
-    seed: '42'
-    type: byte
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [64, 408.0]
-    rotation: 0
-    state: disabled
 - name: blocks_char_to_float_0
   id: blocks_char_to_float
   parameters:
@@ -423,7 +404,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: alice.txt
+    file: tx.txt
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -1052,7 +1033,6 @@ blocks:
     state: true
 
 connections:
-- [analog_random_uniform_source_x_0, '0', blocks_unpack_k_bits_bb_0, '0']
 - [blocks_char_to_float_0, '0', qtgui_time_sink_x_0, '0']
 - [blocks_file_source_0, '0', blocks_unpack_k_bits_bb_0, '0']
 - [blocks_pack_k_bits_bb_1, '0', digital_constellation_encoder_bc_0, '0']
