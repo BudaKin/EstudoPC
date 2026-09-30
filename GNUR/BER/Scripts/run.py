@@ -3,9 +3,11 @@ Varre noise_voltage, freq_offset e epsilon (cada um como início fim passo),
 rodando o flowgraph e o comparador para cada combinação, e plota BER no final.
 
 Uso (execute na mesma pasta de qpsk_loopback_5g.py, comparador_min.py e tx.txt):
-    python3 run_sweep.py
-    python3 run_sweep.py --noise 0 4 0.5
-    python3 run_sweep.py --noise 0 2 0.5 --freq 0 200 100
+    python run.py
+    python run.py --noise 0 4 0.5
+    python run.py --freq -0.0002 0.0002 0.000001
+    python run.py --eps 0.99 1.01 0.0001
+    python run.py --noise 0 10 0.01 --freq -0.0002 0.0002 0.000001 --eps 0.99 1.01 0.0001
 """
 import argparse
 import itertools
@@ -90,7 +92,7 @@ def plotar(resultados, dims, out):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--noise", nargs=3, type=float, metavar=("INICIO", "FIM", "PASSO"),
-                     default=[0.0, 4.0, 0.4])
+                     default=[0.0, 0.0, 0.0])
     ap.add_argument("--freq", nargs=3, type=float, metavar=("INICIO", "FIM", "PASSO"),
                      default=[0.0, 0.0, 0.0])
     ap.add_argument("--eps", nargs=3, type=float, metavar=("INICIO", "FIM", "PASSO"),
