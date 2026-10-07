@@ -185,7 +185,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: bit_rate / 1
+    value: bit_rate / 2
   states:
     bus_sink: false
     bus_source: false
@@ -348,7 +348,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '12'
+    value: '24'
   states:
     bus_sink: false
     bus_source: false
@@ -404,7 +404,7 @@ blocks:
     alias: ''
     begin_tag: pmt.PMT_NIL
     comment: ''
-    file: tx.txt
+    file: alice.txt
     length: '0'
     maxoutbuf: '0'
     minoutbuf: '0'
@@ -994,7 +994,7 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1328, 408.0]
+    coordinate: [1352, 408.0]
     rotation: 0
     state: enabled
 - name: tabs

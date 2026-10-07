@@ -185,7 +185,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: bit_rate / 1
+    value: bit_rate / 2
   states:
     bus_sink: false
     bus_source: false
@@ -327,7 +327,7 @@ blocks:
   id: variable
   parameters:
     comment: ''
-    value: '3'
+    value: '6'
   states:
     bus_sink: false
     bus_source: false
@@ -377,6 +377,39 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [520, 364.0]
+    rotation: 0
+    state: enabled
+- name: blocks_complex_to_float_0
+  id: blocks_complex_to_float
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1184, 632.0]
+    rotation: 0
+    state: enabled
+- name: blocks_float_to_char_0
+  id: blocks_float_to_char
+  parameters:
+    affinity: ''
+    alias: ''
+    comment: ''
+    maxoutbuf: '0'
+    minoutbuf: '0'
+    scale: '1'
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1352, 640.0]
     rotation: 0
     state: enabled
 - name: blocks_multiply_const_vxx_0
@@ -459,7 +492,7 @@ blocks:
     constellation: digital.constellation_bpsk().base()
     damping: '1.0'
     loop_bw: '0.045'
-    max_dev: '0.01'
+    max_dev: '0.02'
     maxoutbuf: '0'
     minoutbuf: '0'
     nfilters: '128'
@@ -703,13 +736,13 @@ blocks:
     bits_por_quadro_transmitido: '1056'
     comment: ''
     duracao_aquecimento_s: '0.0'
-    duracao_janela_s: 1/8
+    duracao_janela_s: '1'
     imprimir_no_console: 'False'
     maxoutbuf: '0'
     minoutbuf: '0'
     nome_da_tag: '''quadro'''
     taxa_codigo: 1/2
-    taxa_de_bits: '800000.0'
+    taxa_de_bits: bit_rate
   states:
     _io_cache: "('Monitor BLER/vaz\xE3o', 'blk', [('nome_da_tag', \"'quadro'\"), ('taxa_de_bits',\
       \ '800000.0'), ('bits_por_quadro_transmitido', '1056'), ('bits_access_code',\
@@ -813,6 +846,24 @@ blocks:
     bus_source: false
     bus_structure: null
     coordinate: [296, 380.0]
+    rotation: 0
+    state: enabled
+- name: network_tcp_sink_0
+  id: network_tcp_sink
+  parameters:
+    addr: 127.0.0.1
+    affinity: ''
+    alias: ''
+    comment: ''
+    mode: '2'
+    port: '2000'
+    type: byte
+    vlen: '1'
+  states:
+    bus_sink: false
+    bus_source: false
+    bus_structure: null
+    coordinate: [1664, 600.0]
     rotation: 0
     state: enabled
 - name: osmosdr_source_0
@@ -1654,8 +1705,11 @@ blocks:
 
 connections:
 - [analog_agc_xx_0, '0', digital_symbol_sync_xx_0, '0']
+- [blocks_complex_to_float_0, '0', blocks_float_to_char_0, '0']
+- [blocks_float_to_char_0, '0', network_tcp_sink_0, '0']
 - [blocks_multiply_const_vxx_0, '0', digital_costas_loop_cc_0, '0']
 - [digital_constellation_soft_decoder_cf_0, '0', epy_block_0_0, '0']
+- [digital_costas_loop_cc_0, '0', blocks_complex_to_float_0, '0']
 - [digital_costas_loop_cc_0, '0', digital_constellation_soft_decoder_cf_0, '0']
 - [digital_costas_loop_cc_0, '0', qtgui_sink_x_1, '0']
 - [digital_crc32_bb_0, '0', epy_block_1, '1']
