@@ -6,13 +6,16 @@ import argparse, sys, time
 from pathlib import Path
 import pandas as pd
 
-PADRAO = {'iftxgain': [0, 30, 5], 'rftxgain': [14], 'rf_gain': [29.7], 'freq': [670e6]}
+# A ordem aqui é a do aninhamento: a primeira variável muda mais devagar, a última mais rápido.
+# O iftx fica por último: é o que muda a cada ponto, sem precisar re-sintonizar o rádio.
+PADRAO = {'rftxgain': [14], 'rf_gain': [29.7], 'freq': [670e6], 'iftxgain': [0, 30, 5]}
 # Valores que o hardware aceita. O que você pedir é trocado pelo mais próximo.
 LIMITES = {'iftxgain': range(48),   # HackRF: ganho IF de TX (dB)
            'rftxgain': [0, 14],     # HackRF: amplificador de TX desligado/ligado
            'rf_gain': [0.0, 0.9, 1.4, 2.7, 3.7, 7.7, 8.7, 12.5, 14.4, 15.7, 16.6, 19.7, 20.7, 22.9, 25.4,
                        28.0, 29.7, 32.8, 33.8, 36.4, 37.2, 38.6, 40.2, 42.1, 43.4, 43.9, 44.5, 48.0, 49.6]}
 DESCARTE = 2.4e6   # amostras do começo de cada ponto que não entram na medição
+AQUECIMENTO = 3    # segundos de espera depois de iniciar o flowgraph
 
 ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
 OPCOES = {'iftxgain': '--iftx', 'rftxgain': '--rftx', 'rf_gain': '--rfrx', 'freq': '--freq'}
@@ -53,6 +56,12 @@ def aplicar(ponto):
     atual.update(ponto)
 
 
+def formatar(seg):
+    h, resto = divmod(int(seg), 3600)
+    mn, s = divmod(resto, 60)
+    return f'{h}h{mn:02d}min{s:02d}s'
+
+
 listas = []
 for nome in PADRAO:
     ajustados = {ajustar(nome, v) for v in faixa(getattr(args, nome))}   # o conjunto tira repetidos
@@ -71,11 +80,16 @@ tb = hw.qpsk_5g_hw(modo='tx+rx', tx_args='hackrf=0', rx_args='rtl=0')
 m = tb.epy_block_1        # medidor: n_tx = amostras recebidas, n_ok = bits que passaram no CRC
 atual, linhas, amostras = {}, [], int(args.amostras)
 
+# Estimativa: cada ponto dura (amostras / taxa de amostragem) segundos.
+taxa_amostragem = tb.get_baud_rate() * tb.get_rx_sps()
+estimado = AQUECIMENTO + len(pontos) * amostras / taxa_amostragem
+print(f'{len(pontos)} pontos, tempo estimado: {formatar(estimado)}')
+
 aplicar(pontos[0])        # o primeiro ponto já vale na partida
 tb.start()
 tb.flowgraph_started.set()
 try:
-    time.sleep(3)         # aquecimento
+    time.sleep(AQUECIMENTO)
     for i, ponto in enumerate(pontos, 1):
         aplicar(ponto)
         base = m.n_tx
