@@ -1,9 +1,8 @@
 #!/usr/bin/env python3
 """Varredura do link HackRF -> RTL-SDR. Grava BLER e vazão em CSV.
-Cada variável aceita INICIO FIM PASSO (varre) ou VALOR (fixa). Exemplo:
+Cada variável aceita INICIO FIM PASSO (varre) ou VALOR (fixa). Começa do maior ganho. Exemplo:
   python3 varredura_hw.py --iftx 0 45 5 --rftx 14 --rfrx 0 50 10 -o saida.csv"""
 import argparse, sys, time
-from itertools import product
 from pathlib import Path
 import pandas as pd
 
@@ -56,9 +55,15 @@ def aplicar(ponto):
 
 listas = []
 for nome in PADRAO:
-    ajustados = [ajustar(nome, v) for v in faixa(getattr(args, nome))]
-    listas.append(list(dict.fromkeys(ajustados)))   # tira repetidos criados pelo ajuste
-pontos = [dict(zip(PADRAO, c)) for c in product(*listas)]
+    ajustados = {ajustar(nome, v) for v in faixa(getattr(args, nome))}   # o conjunto tira repetidos
+    listas.append(sorted(ajustados, reverse=nome != 'freq'))             # ganhos: do maior para o menor
+
+# Em serpente: o laço de dentro inverte o sentido a cada passo do de fora, então cada ponto
+# difere do anterior em uma só variável e em um só degrau (sem saltos grandes).
+pontos = [()]
+for lista in reversed(listas):
+    pontos = [(v, *p) for i, v in enumerate(lista) for p in (pontos if i % 2 == 0 else pontos[::-1])]
+pontos = [dict(zip(PADRAO, p)) for p in pontos]
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 import qpsk_5g_hw as hw   # flowgraph original
