@@ -285,6 +285,7 @@ GNUR/*
 !GNUR/alice.txt
 !GNUR/5gqpsk.grc
 !GNUR/5gqpsk-ber.grc
+!GNUR/5gqpsk_claude.grc
 
 # Organizando as pastas novas
 !GNUR/BLER_Vazao/
@@ -295,6 +296,9 @@ GNUR/BER/*
 
 !GNUR/BLER_Vazao/rx_5g.grc
 !GNUR/BLER_Vazao/tx_5g.grc
+
+!GNUR/BLER_Vazao/loopback
+!GNUR/BLER_Vazao/sdr
 
 !GNUR/BER/rx_BER.grc
 !GNUR/BER/tx_BER.grc

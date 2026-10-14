@@ -9,7 +9,7 @@ options:
     description: ''
     gen_cmake: 'On'
     gen_linking: dynamic
-    generate_options: qt_gui
+    generate_options: no_gui
     hier_block_src_path: '.:'
     id: tx_5g
     max_nouts: '0'
@@ -242,24 +242,15 @@ blocks:
     rotation: 0
     state: enabled
 - name: iftxgain
-  id: variable_qtgui_range
+  id: variable
   parameters:
     comment: ''
-    gui_hint: ''
-    label: ''
-    min_len: '200'
-    orient: QtCore.Qt.Horizontal
-    rangeType: int
-    start: '0'
-    step: '1'
-    stop: '47'
     value: '30'
-    widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2120, 480.0]
+    coordinate: [1920, 416.0]
     rotation: 0
     state: enabled
 - name: payload_len
@@ -295,24 +286,15 @@ blocks:
     rotation: 0
     state: true
 - name: rftxgain
-  id: variable_qtgui_range
+  id: variable
   parameters:
     comment: ''
-    gui_hint: ''
-    label: ''
-    min_len: '200'
-    orient: QtCore.Qt.Horizontal
-    rangeType: int
-    start: '0'
-    step: '30'
-    stop: '30'
     value: '30'
-    widget: counter_slider
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [2120, 320.0]
+    coordinate: [2032, 416.0]
     rotation: 0
     state: enabled
 - name: rrc_filter_taps
@@ -380,21 +362,23 @@ blocks:
     coordinate: [624, 4.0]
     rotation: 0
     state: true
-- name: blocks_char_to_float_0
-  id: blocks_char_to_float
+- name: analog_random_uniform_source_x_0
+  id: analog_random_uniform_source_x
   parameters:
     affinity: ''
     alias: ''
     comment: ''
+    maximum: '256'
     maxoutbuf: '0'
+    minimum: '0'
     minoutbuf: '0'
-    scale: '1'
-    vlen: '1'
+    seed: '42'
+    type: byte
   states:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1160, 424.0]
+    coordinate: [24, 296.0]
     rotation: 0
     state: enabled
 - name: blocks_file_source_0
@@ -416,9 +400,9 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [72, 232.0]
+    coordinate: [56, 144.0]
     rotation: 0
-    state: enabled
+    state: disabled
 - name: blocks_pack_k_bits_bb_1
   id: blocks_pack_k_bits_bb
   parameters:
@@ -868,175 +852,13 @@ blocks:
     bus_sink: false
     bus_source: false
     bus_structure: null
-    coordinate: [1928, 368.0]
+    coordinate: [1920, 224.0]
     rotation: 0
     state: enabled
-- name: qtgui_sink_x_0
-  id: qtgui_sink_x
-  parameters:
-    affinity: ''
-    alias: ''
-    bw: samp_rate
-    comment: ''
-    fc: '0'
-    fftsize: '1024'
-    gui_hint: tabs@0:1,0,1,1
-    maxoutbuf: '0'
-    minoutbuf: '0'
-    name: '"teste"'
-    plotconst: 'True'
-    plotfreq: 'True'
-    plottime: 'True'
-    plotwaterfall: 'True'
-    rate: '10'
-    showports: 'False'
-    showrf: 'False'
-    type: complex
-    wintype: window.WIN_BLACKMAN_hARRIS
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1928, 232.0]
-    rotation: 0
-    state: enabled
-- name: qtgui_time_sink_x_0
-  id: qtgui_time_sink_x
-  parameters:
-    affinity: ''
-    alias: ''
-    alpha1: '1.0'
-    alpha10: '1.0'
-    alpha2: '1.0'
-    alpha3: '1.0'
-    alpha4: '1.0'
-    alpha5: '1.0'
-    alpha6: '1.0'
-    alpha7: '1.0'
-    alpha8: '1.0'
-    alpha9: '1.0'
-    autoscale: 'False'
-    axislabels: 'True'
-    color1: blue
-    color10: dark blue
-    color2: red
-    color3: green
-    color4: black
-    color5: cyan
-    color6: magenta
-    color7: yellow
-    color8: dark red
-    color9: dark green
-    comment: ''
-    ctrlpanel: 'False'
-    entags: 'True'
-    grid: 'False'
-    gui_hint: tabs@0:0,0,1,1
-    label1: Signal 1
-    label10: Signal 10
-    label2: Signal 2
-    label3: Signal 3
-    label4: Signal 4
-    label5: Signal 5
-    label6: Signal 6
-    label7: Signal 7
-    label8: Signal 8
-    label9: Signal 9
-    legend: 'True'
-    marker1: '-1'
-    marker10: '-1'
-    marker2: '-1'
-    marker3: '-1'
-    marker4: '-1'
-    marker5: '-1'
-    marker6: '-1'
-    marker7: '-1'
-    marker8: '-1'
-    marker9: '-1'
-    name: '""'
-    nconnections: '1'
-    size: '1024'
-    srate: samp_rate
-    stemplot: 'False'
-    style1: '1'
-    style10: '1'
-    style2: '1'
-    style3: '1'
-    style4: '1'
-    style5: '1'
-    style6: '1'
-    style7: '1'
-    style8: '1'
-    style9: '1'
-    tr_chan: '0'
-    tr_delay: '0'
-    tr_level: '0.0'
-    tr_mode: qtgui.TRIG_MODE_TAG
-    tr_slope: qtgui.TRIG_SLOPE_POS
-    tr_tag: '"quadro"'
-    type: float
-    update_time: '0.10'
-    width1: '1'
-    width10: '1'
-    width2: '1'
-    width3: '1'
-    width4: '1'
-    width5: '1'
-    width6: '1'
-    width7: '1'
-    width8: '1'
-    width9: '1'
-    ylabel: Amplitude
-    ymax: '1.5'
-    ymin: '-0.5'
-    yunit: '""'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [1352, 408.0]
-    rotation: 0
-    state: enabled
-- name: tabs
-  id: qtgui_tab_widget
-  parameters:
-    alias: ''
-    comment: ''
-    gui_hint: 3,0,20,1
-    label0: Transmissor
-    label1: Canal
-    label10: Tab 10
-    label11: Tab 11
-    label12: Tab 12
-    label13: Tab 13
-    label14: Tab 14
-    label15: Tab 15
-    label16: Tab 16
-    label17: Tab 17
-    label18: Tab 18
-    label19: Tab 19
-    label2: Receptor
-    label3: Tab 3
-    label4: Tab 4
-    label5: Tab 5
-    label6: Tab 6
-    label7: Tab 7
-    label8: Tab 8
-    label9: Tab 9
-    num_tabs: '1'
-  states:
-    bus_sink: false
-    bus_source: false
-    bus_structure: null
-    coordinate: [544, 68.0]
-    rotation: 0
-    state: true
 
 connections:
-- [blocks_char_to_float_0, '0', qtgui_time_sink_x_0, '0']
-- [blocks_file_source_0, '0', blocks_unpack_k_bits_bb_0, '0']
+- [analog_random_uniform_source_x_0, '0', blocks_unpack_k_bits_bb_0, '0']
 - [blocks_pack_k_bits_bb_1, '0', digital_constellation_encoder_bc_0, '0']
-- [blocks_stream_mux_0, '0', blocks_char_to_float_0, '0']
 - [blocks_stream_mux_0, '0', blocks_pack_k_bits_bb_1, '0']
 - [blocks_stream_to_tagged_stream_0, '0', digital_crc32_bb_0, '0']
 - [blocks_unpack_k_bits_bb_0, '0', blocks_stream_to_tagged_stream_0, '0']
@@ -1046,7 +868,6 @@ connections:
 - [digital_crc32_bb_0, '0', fec_extended_tagged_encoder_0, '0']
 - [fec_extended_tagged_encoder_0, '0', blocks_stream_mux_0, '1']
 - [interp_fir_filter_xxx_0, '0', osmosdr_sink_0, '0']
-- [interp_fir_filter_xxx_0, '0', qtgui_sink_x_0, '0']
 
 metadata:
   file_format: 1
