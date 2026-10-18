@@ -2,6 +2,7 @@
 """Varredura do link HackRF -> RTL-SDR. Grava BLER e vazão em CSV.
 Cada variável aceita INICIO FIM PASSO (varre) ou VALOR (fixa). Começa do maior ganho. Exemplo:
   python3 varredura_hw-c.py --iftx 0 45 5 --rftx 14 --rfrx 0 50 10 -o saida.csv
+A taxa do código polar (--R, ex.: 1/3, 0.5, 3/4; e --N) vale para a varredura inteira, como --amostras.
 
 Como a BLER é medida: o TX numera os quadros (bloco 'Numerador de quadros' do qpsk_5g_hw.py).
 Em cada ponto, depois do descarte, o script anota o número do próximo quadro que o TX vai gerar
@@ -15,6 +16,9 @@ entregue pelo RTL-SDR / sps: só confere o RTL, não o enlace); rajadas (quantas
 quadros perdidos); maior_rajada (a mais longa, em quadros)."""
 import argparse, csv, sys, threading, time
 from pathlib import Path
+
+sys.path.insert(0, str(Path(__file__).resolve().parent))
+import qpsk_5g_hw as hw   # flowgraph (versão com numeração de quadros e --R/--N)
 
 # A ordem aqui é a do aninhamento: a primeira variável muda mais devagar, a última mais rápido.
 # O iftx fica por último: é o que muda a cada ponto, sem precisar re-sintonizar o rádio.
@@ -37,12 +41,21 @@ ap.add_argument('--amostras', type=float, default=50e6,
                 help='amostras do RTL-SDR por ponto, contando o descarte (padrão: 50e6, ~21 s, 15025 quadros)')
 ap.add_argument('--erros', type=int, default=0,
                 help='encerra o ponto assim que chegar a este número de erros (padrão: 0 = nunca)')
+ap.add_argument('--R', type=hw.fracao, default=0.5, metavar='TAXA',
+                help='taxa do código polar K/N, ex.: 1/3, 0.5, 3/4 (padrão: 1/2); vale para toda a varredura')
+ap.add_argument('--N', type=int, default=1024, metavar='BITS',
+                help='bits codificados por bloco, potência de 2 até 1024 (padrão: 1024); vale para toda a varredura')
 ap.add_argument('-o', '--csv', default='resultados_hw.csv')
 args = ap.parse_args()
 if args.amostras <= DESCARTE:
     sys.exit(f'--amostras deve ser maior que {DESCARTE:g}')
 if args.erros < 0:
     sys.exit('--erros não pode ser negativo')
+K = round(args.R * args.N)
+try:
+    hw.validar_codigo(args.N, K)
+except ValueError as e:
+    sys.exit(f'erro: {e}')
 
 
 def faixa(v):
@@ -97,8 +110,6 @@ for lista in reversed(listas):
     pontos = [(v, *p) for i, v in enumerate(lista) for p in (pontos if i % 2 == 0 else pontos[::-1])]
 pontos = [dict(zip(PADRAO, p)) for p in pontos]
 
-sys.path.insert(0, str(Path(__file__).resolve().parent))
-import qpsk_5g_hw as hw   # flowgraph (versão com numeração de quadros)
 from gnuradio import gr
 import numpy as np
 
@@ -142,7 +153,7 @@ class ContadorQuadros(gr.sync_block):
         return chegadas
 
 
-tb = hw.qpsk_5g_hw(modo='tx+rx', tx_args='hackrf=0', rx_args='rtl=0')
+tb = hw.qpsk_5g_hw(modo='tx+rx', tx_args='hackrf=0', rx_args='rtl=0', N=args.N, K=K)
 if not hasattr(tb, 'epy_block_2'):
     sys.exit('este script precisa do qpsk_5g_hw.py com numeração de quadros (Numerador de quadros no TX)')
 numerador = tb.epy_block_2       # TX: escreve o número em cada quadro
@@ -223,6 +234,7 @@ def medir(n, limite_erros):
 
 
 estimado = AQUECIMENTO + len(pontos) * (args.amostras / taxa_amostragem + 1.5)
+print(f'código polar: N = {tb.N}, K = {tb.K}, R = {tb.R:.3f}')
 print(f'{len(pontos)} pontos, {n_quadros} quadros por ponto, tempo estimado: {formatar(estimado)}'
       + (' (menos, se --erros encerrar pontos antes)' if args.erros else ''))
 
