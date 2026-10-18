@@ -105,7 +105,7 @@ try:
         baud = (tx1 - tx0) / (t1 - t0) / tb.get_rx_sps()  # símbolos por segundo
         linhas.append({**ponto, 'amostras': tx1 - tx0, 'quadros': quadros, 'erros': erros,
                        'bler': bler, 'vazao_bps': round(vazao, 1), 'baud_rate': round(baud, 1)})
-        print(f'[{i}/{len(pontos)}] {ponto}  ->  BLER {bler:.2e}  {vazao / 1e3:.1f} kbit/s')
+        print(f'[{i}/{len(pontos)}] {ponto}  ->  BLER {bler:.2e}  {vazao / 1e3:.1f} kbit/s, quadros: {quadros}, erros: {erros}')
 except KeyboardInterrupt:
     print('\nInterrompido.')
 finally:

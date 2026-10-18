@@ -12,6 +12,9 @@
 #   python3 qpsk_5g_hw.py --modo tx        # so transmite (HackRF)
 #   python3 qpsk_5g_hw.py --modo rx        # so recebe (RTL-SDR)
 #   python3 qpsk_5g_hw.py                  # os dois no mesmo computador (tx+rx)
+#
+# Importante: TX e RX precisam rodar esta mesma versao do script. O TX numera
+# os quadros e o medidor de BLER do RX usa essa numeracao.
 
 from gnuradio import analog
 from gnuradio import blocks
@@ -125,63 +128,136 @@ class _epy_block_0_0_blk(gr.basic_block):
 epy_block_0_0 = SimpleNamespace(blk=_epy_block_0_0_blk)
 
 
-# ---- epy_block_1 (de qpsk_5g_claude_epy_block_1.py) ----
+# ---- epy_block_1: Medidor de BLER (RX) ----
 """
-Medidor de BLER.
+Medidor de BLER por numeracao de quadros.
 
-Entrada 0 (tx): amostras na saida do transmissor (antes do canal).
-Entrada 1 (ok): bits na saida do CRC do receptor, que so deixa passar
-quadros corretos.
+O TX escreve um numero sequencial (0, 1, 2, ...) nos primeiros 'bits_numero'
+bits de dados de cada quadro (bloco 'Numerador de quadros', mais abaixo).
+Este medidor fica na saida do CRC, que so deixa passar quadros corretos, e le
+esse numero. Se chegam os quadros 7 e 10, os quadros 8 e 9 se perderam: 2 erros.
 
-BLER = 1 - (quadros corretos) / (quadros transmitidos).
-Quadros que o receptor nem chegou a detectar tambem contam como erro.
+Um quadro so entra na conta (como certo ou como perdido) depois de ter saido
+do receptor; por isso o numero de erros nunca diminui. Quadros que o receptor
+nem chegou a detectar tambem contam como erro.
 
 Qualquer mensagem na porta 'zerar' recomeca a contagem.
 """
 
 
-class _epy_block_1_blk(gr.basic_block):
-    def __init__(self, amostras_por_quadro=1, bits_por_quadro=1):
-        gr.basic_block.__init__(
+class _epy_block_1_blk(gr.sync_block):
+    def __init__(self, bits_por_quadro=480, bits_numero=32):
+        gr.sync_block.__init__(
             self,
             name='Medidor de BLER',
-            in_sig=[np.complex64, np.uint8],
+            in_sig=[np.uint8],
             out_sig=None,
         )
-        self.amostras_por_quadro = int(amostras_por_quadro)
         self.bits_por_quadro = int(bits_por_quadro)
-        self.n_tx = 0
-        self.n_ok = 0
+        self.bits_numero = int(bits_numero)
+        self._modulo = 1 << self.bits_numero
+        self._salto_max = self._modulo >> 8      # com 32 bits: 2**24 quadros (~6 h no ar)
+        self._pesos = 1 << np.arange(self.bits_numero - 1, -1, -1, dtype=np.int64)
+        self._sobra = np.zeros(0, dtype=np.uint8)   # pedaco de quadro que chegou incompleto
+        self._trava = threading.Lock()              # resumo() e chamado de outra thread
+        self._zerar(None)
         self.message_port_register_in(pmt.intern('zerar'))
         self.set_msg_handler(pmt.intern('zerar'), self._zerar)
 
     def _zerar(self, msg):
-        self.n_tx = 0
-        self.n_ok = 0
+        with self._trava:
+            self.ultimo = None       # numero do ultimo quadro correto
+            self.n_ok = 0            # quadros corretos
+            self.n_total = 0         # quadros corretos + perdidos
+            self.t_ultimo = None     # instante em que chegou o ultimo quadro correto
+            self.incoerentes = 0     # saltos absurdos na numeracao
 
-    def forecast(self, noutput_items, ninputs):
-        # As duas entradas andam em ritmos diferentes; aceita o que houver.
-        return [0] * ninputs
+    def _registrar(self, numero):
+        if self.ultimo is not None:
+            salto = (numero - self.ultimo) % self._modulo
+            if salto == 0:
+                return                       # quadro repetido: ignora
+            if salto <= self._salto_max:
+                self.n_total += salto        # (salto - 1) quadros perdidos + este
+                self.n_ok += 1
+                self.ultimo = numero
+                return
+            # Salto absurdo (a numeracao voltou: o TX foi reiniciado).
+            # Os quadros do intervalo sao desconhecidos; recomeca deste.
+            self.incoerentes += 1
+        self.ultimo = numero
+        self.n_total += 1
+        self.n_ok += 1
 
-    def general_work(self, input_items, output_items):
-        n_tx = len(input_items[0])
-        n_ok = len(input_items[1])
-        self.n_tx += n_tx
-        self.n_ok += n_ok
-        self.consume(0, n_tx)
-        self.consume(1, n_ok)
-        return 0
+    def work(self, input_items, output_items):
+        L = self.bits_por_quadro
+        bits = np.concatenate((self._sobra, input_items[0]))
+        n = bits.size // L
+        self._sobra = bits[n * L:].copy()
+        if n:
+            cabecalhos = bits[:n * L].reshape(n, L)[:, :self.bits_numero]
+            numeros = cabecalhos.astype(np.int64) @ self._pesos
+            with self._trava:
+                for numero in numeros.tolist():
+                    self._registrar(numero)
+                self.t_ultimo = time.monotonic()
+        return len(input_items[0])
 
     def resumo(self):
-        quadros = self.n_tx // self.amostras_por_quadro
-        corretos = self.n_ok // self.bits_por_quadro
-        erros = max(quadros - corretos, 0)
-        if quadros == 0:
+        with self._trava:
+            total, ok = self.n_total, self.n_ok
+            t, incoerentes = self.t_ultimo, self.incoerentes
+        if total == 0:
             return 'aguardando quadros...'
-        return f'{erros / quadros:.2e}   ({erros} erros em {quadros} quadros)'
+        if 2 * incoerentes > ok:
+            return 'numeracao nao confere: atualize o script no TX e digite reset'
+        erros = total - ok
+        texto = f'{erros / total:.2e}   ({erros} erros em {total} quadros)'
+        parado = time.monotonic() - t
+        if parado > 1.0:
+            texto += f'   [nenhum quadro correto ha {parado:.0f} s]'
+        return texto
 
 
 epy_block_1 = SimpleNamespace(blk=_epy_block_1_blk)
+
+
+# ---- epy_block_2: Numerador de quadros (TX) ----
+class _epy_block_2_blk(gr.sync_block):
+    """
+    Numerador de quadros.
+
+    Escreve o numero do quadro (0, 1, 2, ..., MSB primeiro) nos primeiros
+    'bits_numero' bits de cada quadro de 'bits_por_quadro' bits de dados.
+    O resto do quadro continua aleatorio. O Medidor de BLER do RX usa esse
+    numero para saber quais quadros se perderam.
+    """
+
+    def __init__(self, bits_por_quadro=480, bits_numero=32):
+        gr.sync_block.__init__(
+            self,
+            name='Numerador de quadros',
+            in_sig=[np.uint8],
+            out_sig=[np.uint8],
+        )
+        if bits_numero > bits_por_quadro:
+            raise ValueError('o numero do quadro nao cabe no quadro')
+        self.bits_por_quadro = int(bits_por_quadro)
+        self.bits_numero = int(bits_numero)
+
+    def work(self, input_items, output_items):
+        out = output_items[0]
+        n = len(out)
+        out[:] = input_items[0][:n]
+        i = self.nitems_written(0) + np.arange(n, dtype=np.int64)   # indice de cada bit no fluxo
+        pos = i % self.bits_por_quadro                              # posicao do bit no quadro
+        cab = pos < self.bits_numero                                # bits reservados ao numero
+        numero = (i[cab] // self.bits_por_quadro) % (1 << self.bits_numero)
+        out[cab] = (numero >> (self.bits_numero - 1 - pos[cab])) & 1
+        return n
+
+
+epy_block_2 = SimpleNamespace(blk=_epy_block_2_blk)
 
 MODOS = ('tx', 'rx', 'tx+rx')
 
@@ -217,6 +293,7 @@ class qpsk_5g_hw(gr.top_block):
         self.rx_taps = rx_taps = np.array(rx_rrc_taps)
         self.access_code = access_code = "11100001010110101110100010010011"
         self.sync_len = sync_len = len(access_code)
+        self.bits_numero = bits_numero = 32   # numero do quadro, no inicio dos dados de cada quadro
         self.qpsk = qpsk = digital.constellation_qpsk().base()
         self.qpsk.set_npwr(1.0)
         self.freq = freq = 670e6
@@ -244,6 +321,7 @@ class qpsk_5g_hw(gr.top_block):
         ##################################################
         self.analog_random_uniform_source_x_0 = analog.random_uniform_source_b(0, 256, 42)
         self.blocks_unpack_k_bits_bb_0 = blocks.unpack_k_bits_bb(8)
+        self.epy_block_2 = epy_block_2.blk(bits_por_quadro=self.K-32, bits_numero=self.bits_numero)
         self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, (self.K-32), "quadro")
         self.digital_crc32_bb_0_0 = digital.crc32_bb(False, "quadro", False)
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=self.PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
@@ -271,7 +349,8 @@ class qpsk_5g_hw(gr.top_block):
         # Connections - TX
         ##################################################
         self.connect((self.analog_random_uniform_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0, 0))
-        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.blocks_stream_to_tagged_stream_0, 0))
+        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.epy_block_2, 0))
+        self.connect((self.epy_block_2, 0), (self.blocks_stream_to_tagged_stream_0, 0))
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_crc32_bb_0_0, 0))
         self.connect((self.digital_crc32_bb_0_0, 0), (self.fec_extended_tagged_encoder_0, 0))
         self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_stream_mux_0, 1))
@@ -326,7 +405,7 @@ class qpsk_5g_hw(gr.top_block):
         ##################################################
         # Blocks - medidores
         ##################################################
-        self.epy_block_1 = epy_block_1.blk(amostras_por_quadro=self.rx_sps*(self.sync_len+self.N)//2, bits_por_quadro=self.K-32)
+        self.epy_block_1 = epy_block_1.blk(bits_por_quadro=self.K-32, bits_numero=self.bits_numero)
         self.blocks_probe_rate_0_1 = blocks.probe_rate(gr.sizeof_char*1, 500.0, 0.15, "vazão")
         self.blocks_probe_rate_0_0 = blocks.probe_rate(gr.sizeof_gr_complex*1, 500.0, 0.15, "samp rate (rtl)")
         self.blocks_probe_rate_0 = blocks.probe_rate(gr.sizeof_gr_complex*1, 500.0, 0.15, "baud rate")
@@ -339,7 +418,6 @@ class qpsk_5g_hw(gr.top_block):
         # Connections - RX
         ##################################################
         self.connect((self.osmosdr_source_0, 0), (self.blocks_probe_rate_0_0, 0))
-        self.connect((self.osmosdr_source_0, 0), (self.epy_block_1, 0))
         self.connect((self.osmosdr_source_0, 0), (self.interp_fir_filter_xxx_1, 0))
         self.connect((self.interp_fir_filter_xxx_1, 0), (self.analog_agc_xx_0, 0))
         self.connect((self.analog_agc_xx_0, 0), (self.digital_symbol_sync_xx_0, 0))
@@ -351,7 +429,7 @@ class qpsk_5g_hw(gr.top_block):
         self.connect((self.epy_block_0_0, 0), (self.fec_extended_tagged_decoder_0, 0))
         self.connect((self.fec_extended_tagged_decoder_0, 0), (self.digital_crc32_bb_0, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.blocks_probe_rate_0_1, 0))
-        self.connect((self.digital_crc32_bb_0, 0), (self.epy_block_1, 1))
+        self.connect((self.digital_crc32_bb_0, 0), (self.epy_block_1, 0))
 
     def _iniciar_probe(self, leitura, setter, periodo=0.5):
         """Thread que, a cada 'periodo' s, le um medidor e grava o valor na variavel."""
@@ -372,10 +450,6 @@ class qpsk_5g_hw(gr.top_block):
             self.osmosdr_sink_0.set_sample_rate(self.tx_samp_rate)
         if self.tem_rx:
             self.osmosdr_source_0.set_sample_rate(self.rx_samp_rate)
-
-    def _atualizar_amostras_por_quadro(self):
-        if self.tem_rx:
-            self.epy_block_1.amostras_por_quadro = self.rx_sps*(self.sync_len+self.N)//2
 
     # ---- taxas ----
     def get_bit_rate(self):
@@ -407,7 +481,6 @@ class qpsk_5g_hw(gr.top_block):
         self._atualizar_taxas()
         if self.tem_rx:
             self.digital_symbol_sync_xx_0.set_sps(self.rx_sps)
-        self._atualizar_amostras_por_quadro()
 
     def get_tx_samp_rate(self):
         return self.tx_samp_rate
@@ -430,7 +503,6 @@ class qpsk_5g_hw(gr.top_block):
         self.N = N
         self.set_frozen_pos(np.sort(self.RelSeq[self.RelSeq < self.N][:self.N-self.K]))
         self.set_frozen_val(np.zeros(self.N-self.K, dtype=int))
-        self._atualizar_amostras_por_quadro()
 
     def get_K(self):
         return self.K
@@ -442,6 +514,7 @@ class qpsk_5g_hw(gr.top_block):
         if self.tem_tx:
             self.blocks_stream_to_tagged_stream_0.set_packet_len((self.K-32))
             self.blocks_stream_to_tagged_stream_0.set_packet_len_pmt((self.K-32))
+            self.epy_block_2.bits_por_quadro = self.K-32
         if self.tem_rx:
             self.epy_block_1.bits_por_quadro = self.K-32
 
@@ -513,7 +586,6 @@ class qpsk_5g_hw(gr.top_block):
 
     def set_sync_len(self, sync_len):
         self.sync_len = sync_len
-        self._atualizar_amostras_por_quadro()
 
     def get_qpsk(self):
         return self.qpsk
