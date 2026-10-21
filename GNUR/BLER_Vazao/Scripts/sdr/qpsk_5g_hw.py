@@ -18,6 +18,10 @@
 # Importante: TX e RX precisam rodar esta mesma versao do script. O TX numera
 # os quadros e o medidor de BLER do RX usa essa numeracao. O mesmo vale para
 # --R e --N: TX e RX precisam usar valores IGUAIS, senao o RX nao decodifica.
+#
+# Access code: 160 bits (5x os 32 bits da versao anterior), definido uma unica
+# vez em ACCESS_CODE_HEX. Esta versao NAO e compativel com TX/RX da versao de
+# 32 bits: os dois lados precisam ser atualizados.
 
 from gnuradio import analog
 from gnuradio import blocks
@@ -62,9 +66,21 @@ class _epy_block_0_0_blk(gr.basic_block):
     270° da constelação. Ao encontrar, desfaz a rotação no payload antes de
     repassá-lo adiante, de modo que o Costas Loop pode travar em qualquer uma
     das quatro fases sem quebrar o enquadramento.
+
+    Detalhes:
+      * O quadro sempre começa num offset par do fluxo (2 LLRs por símbolo, e
+        access code e payload têm comprimento par), então só os offsets pares
+        são testados. Isso corta pela metade as contas e os falsos alarmes, e
+        mantém o alinhamento ao símbolo: tudo que o bloco consome é par.
+      * A métrica é normalizada pela soma de |LLR|, então não depende da escala
+        dos LLRs. Dentro de um período de quadro vale o MAIOR pico acima do
+        limiar (e não o primeiro), então um pico espúrio nunca ganha do
+        verdadeiro.
+      * Com um access code longo (160 bits) o limiar pode ser bem mais baixo
+        que com 32 bits (0,9) sem aumentar os falsos alarmes: ver LIMIAR_AC.
     """
 
-    def __init__(self, access_code="", payload_len_in_bits=0, tag_key="", threshold=0.9):
+    def __init__(self, access_code="", payload_len_in_bits=0, tag_key="", threshold=0.6):
         gr.basic_block.__init__(
             self,
             name='Find Access Code',
@@ -107,20 +123,26 @@ class _epy_block_0_0_blk(gr.basic_block):
         if in0.size < self.frame_len or out0.size < self.pl_len:
             return 0
 
-        # Busca vetorizada: testa de uma vez todos os offsets em que ainda cabe
-        # um quadro inteiro, limitada a um período de quadro por chamada.
+        # Busca vetorizada: testa todos os offsets PARES em que ainda cabe um
+        # quadro inteiro, limitada a um período de quadro por chamada.
         last = min(in0.size - self.frame_len, self.frame_len - 1)
-        w = np.lib.stride_tricks.sliding_window_view(in0[:last + self.ac_len], self.ac_len)
-        energy = np.abs(w).sum(axis=1)
-        metric = (w @ self.codes.T) / np.where(energy > 0.0, energy, np.inf)[:, None]
+        n_off = last // 2 + 1                          # offsets 0, 2, 4, ... <= last
+        x = in0[:2 * (n_off - 1) + self.ac_len]
+        # energia (soma de |LLR|) de cada janela, por soma acumulada
+        acum = np.concatenate(([0.0], np.cumsum(np.abs(x), dtype=np.float64)))
+        energy = (acum[self.ac_len:] - acum[:-self.ac_len])[::2][:n_off]
+        # correlação com as 4 rotações (np.correlate evita materializar as janelas)
+        corr = np.stack([np.correlate(x, c, 'valid')[::2][:n_off] for c in self.codes], axis=1)
+        metric = corr / np.where(energy > 0.0, energy, np.inf)[:, None]
 
-        idx = np.flatnonzero(metric.max(axis=1) >= self.threshold)
-        if idx.size == 0:
-            self.consume(0, last + 1)   # descarta o que já foi testado, guarda a cauda
+        melhor = metric.max(axis=1)                    # melhor rotação em cada offset
+        i = int(np.argmax(melhor))                     # maior pico do período
+        if melhor[i] < self.threshold:
+            self.consume(0, 2 * n_off)   # descarta o que já foi testado (par: mantém o alinhamento), guarda a cauda
             return 0
 
-        n = int(idx[0])                      # primeiro quadro do bloco
-        k = int(np.argmax(metric[n]))        # qual das 4 rotações casou
+        n = 2 * i                                    # início do quadro
+        k = int(np.argmax(metric[i]))                # qual das 4 rotações casou
         payload = in0[n + self.ac_len: n + self.frame_len]
         out0[:self.pl_len] = self._rot(payload, -k)   # desfaz a rotação
         self.consume(0, n + self.frame_len)
@@ -267,6 +289,30 @@ MODOS = ('tx', 'rx', 'tx+rx')
 CRC_BITS = 32    # CRC-32 anexado a cada quadro (faz parte dos K bits de informacao)
 N_MAX = 1024     # tamanho da sequencia de confiabilidade RelSeq (5G NR)
 
+# Access code (palavra de sincronismo) de 160 bits = 20 bytes, 5x o de 32 bits da
+# versao anterior. E a UNICA definicao: o TX gera os bytes a partir dele, o RX
+# correlaciona com ele e sync_len / vazao teorica / stream_mux saem do seu tamanho.
+# Foi escolhido por busca (80 simbolos QPSK) para ter baixa correlacao com ele
+# mesmo deslocado e nas 4 rotacoes de fase: o maior lobulo lateral e 12/160 = 0,075
+# (o pico e 1,0). Para trocar o codigo, troque so esta linha (multiplo de 8 bits).
+ACCESS_CODE_HEX = '8886F500DD8000B32D37E0DE9F387398A1D15D68'
+ACCESS_CODE = ''.join(f'{b:08b}' for b in bytes.fromhex(ACCESS_CODE_HEX))   # MSB primeiro
+
+# Limiar da correlacao normalizada (1,0 = casamento perfeito) no RX. Com 32 bits era
+# 0,9 (alto, para segurar falsos alarmes) e perdia quadros em SNR moderada. Com 160
+# bits, em dados aleatorios o pico fica em ~0,45 no maximo e o quadro real passa de
+# 0,6 mesmo em Es/N0 ~ -1 dB, entao 0,6 acha os quadros bem antes do decodificador
+# polar falhar e quase nao tem falso alarme.
+LIMIAR_AC = 0.6
+
+
+def validar_access_code(access_code):
+    """O access code vira bytes no TX e simbolos QPSK (pares de bits) no RX."""
+    if not access_code or set(access_code) - {'0', '1'}:
+        raise ValueError('access code deve ser uma string de 0s e 1s')
+    if len(access_code) % 8:
+        raise ValueError(f'access code com {len(access_code)} bits: use multiplo de 8')
+
 
 def validar_codigo(N, K, bits_numero=32):
     """Confere se (N, K) funciona neste fluxo; levanta ValueError se nao."""
@@ -286,6 +332,7 @@ class qpsk_5g_hw(gr.top_block):
         if modo not in MODOS:
             raise ValueError(f'modo invalido: {modo!r} (use: {", ".join(MODOS)})')
         validar_codigo(N, K)
+        validar_access_code(ACCESS_CODE)
         self.flowgraph_started = threading.Event()
         self.modo = modo
         self.tem_tx = 'tx' in modo.split('+')
@@ -311,8 +358,8 @@ class qpsk_5g_hw(gr.top_block):
         self.rx_rrc_taps = rx_rrc_taps = firdes.root_raised_cosine(rx_sps, rx_samp_rate, baud_rate, 0.25, (11*rx_sps))
         self.tx_taps = tx_taps = np.array(tx_rrc_taps)
         self.rx_taps = rx_taps = np.array(rx_rrc_taps)
-        self.access_code = access_code = "11100001010110101110100010010011"
-        self.sync_len = sync_len = len(access_code)
+        self.access_code = access_code = ACCESS_CODE
+        self.sync_len = sync_len = len(access_code)       # 160 bits
         self.bits_numero = bits_numero = 32   # numero do quadro, no inicio dos dados de cada quadro
         self.qpsk = qpsk = digital.constellation_qpsk().base()
         self.qpsk.set_npwr(1.0)
@@ -345,9 +392,10 @@ class qpsk_5g_hw(gr.top_block):
         self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, self.bits_dados, "quadro")
         self.digital_crc32_bb_0_0 = digital.crc32_bb(False, "quadro", False)
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=self.PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
-        self.blocks_vector_source_x_0 = blocks.vector_source_b((0xE1, 0x5A, 0xE8, 0x93), True, 1, [])
+        self.blocks_vector_source_x_0 = blocks.vector_source_b(
+            tuple(int(self.access_code[i:i + 8], 2) for i in range(0, self.sync_len, 8)), True, 1, [])
         self.blocks_unpack_k_bits_bb_0_0 = blocks.unpack_k_bits_bb(8)
-        self.blocks_stream_mux_0 = blocks.stream_mux(gr.sizeof_char*1, (32, self.N))
+        self.blocks_stream_mux_0 = blocks.stream_mux(gr.sizeof_char*1, (self.sync_len, self.N))
         self.blocks_pack_k_bits_bb_1 = blocks.pack_k_bits_bb(2)
         self.digital_constellation_encoder_bc_0 = digital.constellation_encoder_bc(self.qpsk)
         self.interp_fir_filter_xxx_0 = filter.interp_fir_filter_ccc(self.tx_sps, self.tx_taps)
@@ -418,7 +466,7 @@ class qpsk_5g_hw(gr.top_block):
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(0.5)
         self.digital_costas_loop_cc_0 = digital.costas_loop_cc((2*np.pi/200), 4, False)
         self.digital_constellation_soft_decoder_cf_0 = digital.constellation_soft_decoder_cf(self.qpsk, -1)
-        self.epy_block_0_0 = epy_block_0_0.blk(access_code=self.access_code, payload_len_in_bits=self.N, tag_key="quadro", threshold=0.9)
+        self.epy_block_0_0 = epy_block_0_0.blk(access_code=self.access_code, payload_len_in_bits=self.N, tag_key="quadro", threshold=LIMIAR_AC)
         self.fec_extended_tagged_decoder_0 = fec.extended_tagged_decoder(decoder_obj_list=self.PC_dec, ann=None, puncpat='11', integration_period=10000, lentagname="quadro", mtu=1500)
         self.digital_crc32_bb_0 = digital.crc32_bb(True, "quadro", False)
 
@@ -590,6 +638,8 @@ class qpsk_5g_hw(gr.top_block):
     def get_access_code(self):
         return self.access_code
 
+    # Como N e K, o access code e definido na construcao (ACCESS_CODE_HEX): o
+    # vector_source, o stream_mux e o Find Access Code teriam de ser recriados juntos.
     def set_access_code(self, access_code):
         self.access_code = access_code
         self.set_sync_len(len(self.access_code))
@@ -885,6 +935,7 @@ def main(top_block_cls=qpsk_5g_hw, options=None):
     vazao_teorica = tb.bit_rate * tb.bits_dados / (tb.N + tb.sync_len)
     print(f'Codigo polar: N = {tb.N}, K = {tb.K}, R = {tb.R:.3f}   '
           f'({tb.bits_dados} bits uteis/quadro, vazao teorica = {vazao_teorica:,.0f} bit/s)')
+    print(f'Access code: {tb.sync_len} bits ({ACCESS_CODE_HEX}), limiar de deteccao = {LIMIAR_AC}')
     print('Radio: ' + ', '.join(f'{n} = {getattr(tb, "get_" + n)()}' for n in FATORES))
     print('Para mudar com o link rodando, digite por exemplo: ' + FATORES[-1] + ' <valor>')
     print('reset zera a BLER (so com RX)   |   clear limpa o terminal   |   setas cima/baixo: historico')

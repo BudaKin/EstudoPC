@@ -1,13 +1,20 @@
 #!/usr/bin/env python3
 """Analisa CSVs de varredura de hardware (iftxgain, rftxgain, rf_gain, bler, vazao_bps...).
 
-Gráficos por arquivo:  mapas, curvas, categorico, ic, ganho_total
-Gráficos entre arquivos (usam todos os CSVs juntos):  fronteira, comparacao
+Gera um único tipo de gráfico: BLER x rf_gain com intervalo de confiança de Wilson (95%),
+um painel por configuração de TX (rftxgain, iftxgain). Com vários CSVs, todos são
+plotados nos mesmos painéis, um por cor, com o nome do CSV na legenda.
+
+Saídas (em --saida):
+  <prefixo>_ic.png        faixa completa de rf_gain
+  <prefixo>_ic_zoom.png   só o intervalo em que o BLER realmente varia (detectado sozinho)
+  (com --vazao, também <prefixo>_vazao.png e <prefixo>_vazao_zoom.png)
+O prefixo é o nome do CSV (se for um só) ou 'comparacao' (se forem vários).
 
 Exemplos:
-  python analise.py resultados_hw_casa1210.csv
-  python analise.py resultados_hw_*.csv --saida graficos --limiar 0.01
-  python analise.py resultados_hw_*.csv --graficos fronteira,ic --mostrar
+  python analise.py resultados_hw_casa1910.csv
+  python analise.py resultados_hw_casa1910.csv resultados_hw_casa18101.csv resultados_hw_casa18102.csv
+  python analise.py resultados_hw_*.csv --faixa 0,10 --vazao
 """
 import argparse
 from pathlib import Path
@@ -15,12 +22,19 @@ from pathlib import Path
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from matplotlib.colors import ListedColormap, LogNorm
-from matplotlib.patches import Patch
+from matplotlib.lines import Line2D
 
 PISO = 1e-5  # BLER = 0 não aparece em escala log; plota como este piso
-MARCAS = "o^sD"
-ESTILOS = ["-", "--", ":", "-."]
+MARCAS = "o^sDvP*X"
+ROTULOS = {}  # opcional: --rotulo CHAVE=TEXTO troca o nome na legenda
+
+
+def rotulo(nome):
+    """Nome na legenda: o do CSV, a menos que --rotulo tenha definido outro."""
+    for chave, texto in ROTULOS.items():
+        if nome.endswith(chave):
+            return texto
+    return nome
 
 
 def wilson(k, n, z=1.96):
@@ -48,192 +62,82 @@ def resumo(df, limiar):
     return pd.DataFrame(linhas)
 
 
-# ---------- gráficos por arquivo: f(df, titulo, limiar) -> fig ----------
+def intervalo_transicao(dfs):
+    """Faixa de rf_gain em que o BLER sai do patamar de falha (~1) e chega ao de zero erros.
 
-def mapas(df, titulo, limiar):
-    """Linha 1: BLER (log). Linha 2: vazão. Uma coluna por rftxgain."""
-    rfs = sorted(df.rftxgain.unique())
-    fig, ax = plt.subplots(2, len(rfs), figsize=(6.5 * len(rfs), 8), squeeze=False)
-    vmax = df.vazao_bps.max()
-    for j, r in enumerate(rfs):
-        d = df[df.rftxgain == r]
-        for linha, col in enumerate(["bler", "vazao_bps"]):
-            t = d.pivot(index="iftxgain", columns="rf_gain", values=col).sort_index()
-            a = ax[linha, j]
-            if col == "bler":
-                im = a.imshow(t.clip(lower=PISO), aspect="auto", origin="lower",
-                              cmap="viridis_r", norm=LogNorm(PISO, 1))
-            else:
-                im = a.imshow(t / 1e3, aspect="auto", origin="lower",
-                              cmap="viridis", vmin=0, vmax=vmax / 1e3)
-            a.set_xticks(range(len(t.columns)), [f"{c:g}" for c in t.columns])
-            a.set_yticks(range(len(t.index)), t.index)
-            a.set_xlabel("rf_gain do RX (dB)")
-            a.set_ylabel("iftxgain")
-            a.set_title(f"{'BLER' if col == 'bler' else 'Vazão (kbps)'} | rftxgain = {r}")
-            fig.colorbar(im, ax=a)
-            if col == "bler":  # marca células abaixo do limiar
-                for (y, x), v in np.ndenumerate(t.values):
-                    if v < limiar:
-                        a.plot(x, y, "w.", ms=4)
-    fig.suptitle(f"{titulo}  (pontos brancos: BLER < {limiar:g})")
-    fig.tight_layout()
-    return fig
-
-
-def curvas(df, titulo, limiar):
-    """BLER x rf_gain, uma curva por iftxgain, um painel por rftxgain."""
-    rfs = sorted(df.rftxgain.unique())
-    fig, ax = plt.subplots(1, len(rfs), figsize=(6.5 * len(rfs), 4.5), squeeze=False,
-                           sharey=True)
-    for a, r in zip(ax[0], rfs):
-        for i, g in df[df.rftxgain == r].groupby("iftxgain"):
+    Por curva, considera 'em transição' os pontos cujo IC de Wilson está acima do piso e
+    abaixo de 99%, mais um ponto vizinho de cada lado; devolve a união entre todas as
+    curvas (arquivos e configurações de TX). None se nenhuma curva transita.
+    """
+    lo, hi = np.inf, -np.inf
+    for df in dfs.values():
+        for _, g in df.groupby(["rftxgain", "iftxgain"]):
             g = g.sort_values("rf_gain")
-            a.semilogy(g.rf_gain, g.bler.clip(lower=PISO), "o-", ms=4, label=f"if={i}")
-        a.axhline(limiar, color="k", ls="--", lw=0.8)
-        a.set_xlabel("rf_gain do RX (dB)")
-        a.set_title(f"rftxgain = {r}")
-        a.grid(alpha=0.3)
-    ax[0, 0].set_ylabel(f"BLER (0 plotado em {PISO:g}; tracejado = limiar)")
-    ax[0, -1].legend(fontsize=8, ncol=2)
-    fig.suptitle(titulo)
-    fig.tight_layout()
-    return fig
+            l, h = wilson(g.erros.values, g.quadros.values)
+            idx = np.where((l > PISO) & (h < 0.99))[0]
+            if not len(idx):
+                continue
+            x = g.rf_gain.values
+            lo = min(lo, x[max(idx[0] - 1, 0)])
+            hi = max(hi, x[min(idx[-1] + 1, len(x) - 1)])
+    return (lo, hi) if lo < hi else None
 
 
-def categorico(df, titulo, limiar):
-    """Mapa em 3 níveis: falha (>=10%), degradado (limiar a 10%), operacional (<limiar)."""
-    rfs = sorted(df.rftxgain.unique())
-    cores = ["#2b2b2b", "#e6ab02", "#1b9e77"]
-    nomes = ["falha (BLER ≥ 10%)", f"degradado ({limiar:g} ≤ BLER < 10%)",
-             f"operacional (BLER < {limiar:g})"]
-    fig, ax = plt.subplots(1, len(rfs), figsize=(6 * len(rfs), 4.6), squeeze=False)
-    for a, r in zip(ax[0], rfs):
-        t = df[df.rftxgain == r].pivot(index="iftxgain", columns="rf_gain",
-                                       values="bler").sort_index()
-        nivel = np.select([t.values < limiar, t.values < 0.1], [2, 1], 0)
-        a.imshow(nivel, aspect="auto", origin="lower", cmap=ListedColormap(cores),
-                 vmin=-0.5, vmax=2.5)
-        a.set_xticks(range(len(t.columns)), [f"{c:g}" for c in t.columns])
-        a.set_yticks(range(len(t.index)), t.index)
-        a.set_xlabel("rf_gain do RX (dB)")
-        a.set_ylabel("iftxgain")
-        a.set_title(f"rftxgain = {r}")
-    fig.legend(handles=[Patch(color=c, label=n) for c, n in zip(cores, nomes)],
-               loc="lower center", ncol=3, frameon=False)
-    fig.suptitle(titulo)
-    fig.tight_layout(rect=[0, 0.08, 1, 1])
-    return fig
-
-
-def ic(df, titulo, limiar):
-    """Um painel por configuração de TX: BLER com intervalo de confiança de Wilson (95%)."""
-    cfgs = sorted(df.groupby(["rftxgain", "iftxgain"]).groups)
+def grafico_ic(dfs, limiar, metrica="bler", xlim=None, extra=""):
+    """Painéis por configuração de TX; uma cor por CSV; faixa = IC 95% de Wilson."""
+    cfgs = sorted({c for d in dfs.values() for c in d.groupby(["rftxgain", "iftxgain"]).groups})
     nc = min(5, len(cfgs))
     nl = -(-len(cfgs) // nc)
-    fig, ax = plt.subplots(nl, nc, figsize=(3.2 * nc, 2.6 * nl), squeeze=False,
-                           sharex=True, sharey=True)
+    fig, ax = plt.subplots(nl, nc, figsize=(max(3.2 * nc, 7.5), max(2.6 * nl, 5) + 0.5),
+                           squeeze=False, sharex=True, sharey=True)
+    nominal = {}  # taxa sem erros de cada CSV (vazão = nominal * (1 - BLER))
+    for nome, df in dfs.items():
+        ok = df.bler < 1
+        nominal[nome] = (df.vazao_bps[ok] / (1 - df.bler[ok])).max() if ok.any() else np.nan
+
     for a, (r, i) in zip(ax.flat, cfgs):
-        g = df[(df.rftxgain == r) & (df.iftxgain == i)].sort_values("rf_gain")
-        lo, hi = wilson(g.erros.values, g.quadros.values)
-        a.fill_between(g.rf_gain, np.clip(lo, PISO, 1), np.clip(hi, PISO, 1), alpha=0.3)
-        a.semilogy(g.rf_gain, g.bler.clip(lower=PISO), "o-", ms=3)
-        a.axhline(limiar, color="k", ls="--", lw=0.7)
+        for k, (nome, df) in enumerate(dfs.items()):
+            g = df[(df.rftxgain == r) & (df.iftxgain == i)].sort_values("rf_gain")
+            if g.empty:
+                continue
+            lo, hi = wilson(g.erros.values, g.quadros.values)
+            cor, marca = f"C{k}", MARCAS[k % len(MARCAS)]
+            if metrica == "bler":
+                a.fill_between(g.rf_gain, np.clip(lo, PISO, 1), np.clip(hi, PISO, 1),
+                               color=cor, alpha=0.25)
+                a.plot(g.rf_gain, g.bler.clip(lower=PISO), marker=marca, ms=3.5, color=cor)
+            else:
+                n = nominal[nome] / 1e3
+                a.fill_between(g.rf_gain, n * (1 - hi), n * (1 - lo), color=cor, alpha=0.25)
+                a.plot(g.rf_gain, g.vazao_bps / 1e3, marker=marca, ms=3.5, color=cor)
+        if metrica == "bler":
+            a.set_yscale("log")
+            a.set_ylim(PISO / 2, 2)
+            a.axhline(limiar, color="k", ls="--", lw=0.7)
+        if xlim:
+            a.set_xlim(*xlim)
         a.set_title(f"if={i}, rftx={r}", fontsize=9)
         a.grid(alpha=0.3)
+
     for a in ax.flat[len(cfgs):]:
         a.axis("off")
-    for a in ax[-1]:
-        a.set_xlabel("rf_gain do RX (dB)", fontsize=8)
-    fig.suptitle(f"{titulo}  (faixa = IC 95% Wilson; BLER 0 plotado em {PISO:g})")
-    fig.tight_layout()
+    for n, a in enumerate(ax.flat[:len(cfgs)]):  # eixo x visível no último painel de cada coluna
+        if n + nc >= len(cfgs):
+            a.tick_params(labelbottom=True)
+            a.set_xlabel("rf_gain do RX (dB)", fontsize=8)
+    for a in ax[:, 0]:
+        a.set_ylabel("BLER" if metrica == "bler" else "Vazão (kbps)", fontsize=8)
+
+    fig.legend(handles=[Line2D([], [], color=f"C{k}", marker=MARCAS[k % len(MARCAS)],
+                               label=rotulo(n)) for k, n in enumerate(dfs)],
+               loc="lower center", ncol=min(len(dfs), 4), frameon=False, fontsize=9)
+    if metrica == "bler":
+        tit = f"BLER com IC 95% Wilson (BLER 0 plotado em {PISO:g}; tracejado = limiar){extra}"
+    else:
+        tit = f"Vazão com IC 95% Wilson do BLER convertido em vazão{extra}"
+    fig.suptitle(tit, fontsize=11)
+    fig.tight_layout(rect=[0, 0.06, 1, 1])
     return fig
-
-
-def ganho_total(df, titulo, limiar):
-    """BLER x (iftxgain + rftxgain + rf_gain): as curvas colapsam se só a potência importa."""
-    fig, a = plt.subplots(figsize=(8, 4.8))
-    vmin, vmax = df.iftxgain.min(), df.iftxgain.max()
-    for r, m in zip(sorted(df.rftxgain.unique()), MARCAS):
-        d = df[df.rftxgain == r]
-        sc = a.scatter(d.iftxgain + d.rftxgain + d.rf_gain, d.bler.clip(lower=PISO),
-                       c=d.iftxgain, cmap="viridis", vmin=vmin, vmax=vmax, marker=m,
-                       s=28, edgecolors="k", linewidths=0.3, label=f"rftxgain = {r}")
-    a.set_yscale("log")
-    a.axhline(limiar, color="k", ls="--", lw=0.8)
-    a.set_xlabel("iftxgain + rftxgain + rf_gain (dB)")
-    a.set_ylabel(f"BLER (0 plotado em {PISO:g})")
-    a.grid(alpha=0.3)
-    a.legend(loc="lower left", fontsize=8)
-    fig.colorbar(sc, label="iftxgain")
-    a.set_title(titulo)
-    fig.tight_layout()
-    return fig
-
-
-# ---------- gráficos entre arquivos: f(dfs, limiar) -> fig ----------
-
-def fronteira(dfs, limiar):
-    """Menor rf_gain a partir do qual o enlace opera, em função do iftxgain."""
-    topo = max(d.rf_gain.max() for d in dfs.values()) + 4
-    fig, a = plt.subplots(figsize=(8, 4.8))
-    for k, (nome, df) in enumerate(dfs.items()):
-        cor = f"C{k}"
-        for (r, d), est, m in zip(df.groupby("rftxgain"), ESTILOS, MARCAS):
-            xs, ys = [], []
-            for i, g in d.groupby("iftxgain"):
-                g = g.sort_values("rf_gain")
-                ruim = np.where(g.bler.values >= limiar)[0]
-                ini = ruim[-1] + 1 if len(ruim) else 0
-                xs.append(i)
-                ys.append(g.rf_gain.iloc[ini] if ini < len(g) else np.nan)
-            ys = np.array(ys, float)
-            a.plot(xs, ys, ls=est, marker=m, color=cor, label=f"{nome} | rftx={r}")
-            nao = np.isnan(ys)
-            a.plot(np.array(xs)[nao], np.full(nao.sum(), topo), "x", color=cor, ms=8)
-    a.set_ylim(-2, topo + 3)
-    a.axhline(topo, color="gray", lw=0.6, ls=":")
-    a.text(a.get_xlim()[0], topo + 0.6, " × = não opera em nenhum rf_gain", fontsize=8,
-           color="gray")
-    a.set_xlabel("iftxgain")
-    a.set_ylabel("menor rf_gain do RX com BLER < limiar para todos os maiores (dB)")
-    a.set_title(f"Fronteira de operação (BLER < {limiar:g})")
-    a.grid(alpha=0.3)
-    a.legend(fontsize=8)
-    fig.tight_layout()
-    return fig
-
-
-def comparacao(dfs, limiar):
-    """BLER x rf_gain sobrepondo os arquivos, nas configurações de TX em comum."""
-    if len(dfs) < 2:
-        return None
-    ifs = sorted(set.intersection(*[set(d.iftxgain) for d in dfs.values()]))
-    rfs = sorted(set.intersection(*[set(d.rftxgain) for d in dfs.values()]))
-    if not ifs or not rfs:
-        return None
-    fig, ax = plt.subplots(len(rfs), len(ifs), figsize=(3.2 * len(ifs), 2.8 * len(rfs)),
-                           squeeze=False, sharex=True, sharey=True)
-    for y, r in enumerate(rfs):
-        for x, i in enumerate(ifs):
-            a = ax[y, x]
-            for nome, df in dfs.items():
-                g = df[(df.iftxgain == i) & (df.rftxgain == r)].sort_values("rf_gain")
-                a.semilogy(g.rf_gain, g.bler.clip(lower=PISO), "o-", ms=3, label=nome)
-            a.axhline(limiar, color="k", ls="--", lw=0.7)
-            a.set_title(f"if={i}, rftx={r}", fontsize=9)
-            a.grid(alpha=0.3)
-    for a in ax[-1]:
-        a.set_xlabel("rf_gain do RX (dB)", fontsize=8)
-    ax[0, 0].legend(fontsize=7)
-    fig.suptitle(f"Comparação entre arquivos (BLER 0 plotado em {PISO:g})")
-    fig.tight_layout()
-    return fig
-
-
-POR_ARQUIVO = {"mapas": mapas, "curvas": curvas, "categorico": categorico, "ic": ic,
-               "ganho_total": ganho_total}
-ENTRE_ARQUIVOS = {"fronteira": fronteira, "comparacao": comparacao}
 
 
 def main():
@@ -243,30 +147,34 @@ def main():
     p.add_argument("--saida", default="graficos", help="pasta de saída (padrão: graficos)")
     p.add_argument("--limiar", type=float, default=0.01,
                    help="BLER abaixo da qual o enlace é 'operacional' (padrão: 0.01)")
-    p.add_argument("--graficos", default="todos",
-                   help="lista separada por vírgula ou 'todos' (padrão). Opções: "
-                        + ", ".join([*POR_ARQUIVO, *ENTRE_ARQUIVOS]))
+    p.add_argument("--faixa", metavar="MIN,MAX",
+                   help="usa esta faixa de rf_gain (dB) no gráfico de zoom, em vez da "
+                        "detectada automaticamente")
+    p.add_argument("--vazao", action="store_true",
+                   help="gera também os gráficos de vazão (completo e zoom)")
+    p.add_argument("--rotulo", action="append", default=[], metavar="CHAVE=TEXTO",
+                   help="nome na legenda para o CSV cujo nome termina em CHAVE (repetível)")
     p.add_argument("--mostrar", action="store_true", help="abre os gráficos na tela")
     a = p.parse_args()
 
-    validos = [*POR_ARQUIVO, *ENTRE_ARQUIVOS]
-    sel = validos if a.graficos == "todos" else a.graficos.split(",")
-    for s in sel:
-        if s not in validos:
-            p.error(f"gráfico desconhecido: {s!r} (opções: {', '.join(validos)})")
+    for r in a.rotulo:
+        if "=" not in r:
+            p.error(f"--rotulo precisa do formato CHAVE=TEXTO (recebido: {r!r})")
+        chave, texto = r.split("=", 1)
+        ROTULOS[chave] = texto
+
+    faixa = None
+    if a.faixa:
+        try:
+            faixa = tuple(float(x) for x in a.faixa.split(","))
+            assert len(faixa) == 2 and faixa[0] < faixa[1]
+        except (ValueError, AssertionError):
+            p.error(f"--faixa precisa do formato MIN,MAX com MIN < MAX (recebido: {a.faixa!r})")
 
     saida = Path(a.saida)
     saida.mkdir(parents=True, exist_ok=True)
     pd.set_option("display.width", 160)
     dfs = {Path(f).stem: pd.read_csv(f) for f in a.csvs}
-
-    def salvar(fig, nome):
-        if fig is None:
-            print(f"(pulado: {nome} precisa de ≥2 arquivos com configurações em comum)")
-            return
-        fig.savefig(saida / f"{nome}.png", dpi=150)
-        if not a.mostrar:
-            plt.close(fig)
 
     for nome, df in dfs.items():
         print(f"\n=== {nome}: {len(df)} pontos, freq = {df.freq.iloc[0] / 1e6:g} MHz, "
@@ -281,13 +189,32 @@ def main():
         r = resumo(df, a.limiar)
         print(r.to_string(index=False, float_format=lambda v: f"{v:.3g}"))
         r.to_csv(saida / f"{nome}_resumo.csv", index=False)
-        for g in sel:
-            if g in POR_ARQUIVO:
-                salvar(POR_ARQUIVO[g](df, nome, a.limiar), f"{nome}_{g}")
 
-    for g in sel:
-        if g in ENTRE_ARQUIVOS:
-            salvar(ENTRE_ARQUIVOS[g](dfs, a.limiar), g)
+    prefixo = next(iter(dfs)) if len(dfs) == 1 else "comparacao"
+    metricas = ["bler"] + (["vazao"] if a.vazao else [])
+
+    zoom = faixa or intervalo_transicao(dfs)
+    if zoom:
+        m = 0.05 * (zoom[1] - zoom[0])
+        xlim = (zoom[0] - m, zoom[1] + m)
+        origem = "informada" if faixa else "detectada"
+        print(f"\nIntervalo de zoom ({origem}): {zoom[0]:g} a {zoom[1]:g} dB")
+    else:
+        xlim = None
+        print("\n(zoom pulado: nenhuma curva tem transição de BLER)")
+
+    for met in metricas:
+        fig = grafico_ic(dfs, a.limiar, met)
+        fig.savefig(saida / f"{prefixo}_{'ic' if met == 'bler' else met}.png", dpi=150)
+        figs = [fig]
+        if xlim:
+            fz = grafico_ic(dfs, a.limiar, met, xlim,
+                            extra=f"\nzoom: rf_gain de {zoom[0]:g} a {zoom[1]:g} dB")
+            fz.savefig(saida / f"{prefixo}_{'ic' if met == 'bler' else met}_zoom.png", dpi=150)
+            figs.append(fz)
+        if not a.mostrar:
+            for f in figs:
+                plt.close(f)
 
     print(f"\nGráficos e resumos salvos em: {saida}/")
     if a.mostrar:
