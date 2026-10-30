@@ -22,6 +22,20 @@
 # Access code: 160 bits (5x os 32 bits da versao anterior), definido uma unica
 # vez em ACCESS_CODE_HEX. Esta versao NAO e compativel com TX/RX da versao de
 # 32 bits: os dois lados precisam ser atualizados.
+#
+# Correcao de frequencia no RX: um FLL (band-edge) antes do filtro casado tira o
+# desvio grosso entre os cristais do HackRF e do RTL-SDR (dezenas de kHz), e o
+# Costas Loop so corrige o que sobra. Sem o FLL, desvios acima de ~35 kHz deixavam
+# o RX parado em "aguardando quadros" (Costas travado numa frequencia falsa).
+#
+# Versao de 26/10:
+# - Embaralhador (scrambler): o TX faz XOR dos N bits codificados com uma
+#   sequencia pseudoaleatoria fixa (PN15) e o RX desfaz trocando o sinal dos LLRs
+#   (como no 5G). Sem ele, com R baixa (sobretudo 0,1) a palavra-codigo tem longas
+#   sequencias de simbolos iguais, o sincronismo de simbolo (Gardner) se perde e
+#   aparece um patamar de BLER que nao melhora com mais potencia.
+#   ATENCAO: TX e RX precisam ser os dois desta versao (ou os dois da anterior).
+# - Lacos de sincronismo mais estreitos (COSTAS_BANDA e GARDNER_BANDA, abaixo).
 
 from gnuradio import analog
 from gnuradio import blocks
@@ -305,6 +319,43 @@ ACCESS_CODE = ''.join(f'{b:08b}' for b in bytes.fromhex(ACCESS_CODE_HEX))   # MS
 # polar falhar e quase nao tem falso alarme.
 LIMIAR_AC = 0.6
 
+# Correcao de frequencia do RX (testado em simulacao, com Es/N0 de 4,5 a 20 dB):
+# - O Costas Loop sozinho, partindo de 0 Hz, so trava com desvio TX-RX de ate
+#   ~20 kHz; perto de 35 kHz demora de 0,1 s a mais de 20 s; com 40 kHz ou mais
+#   trava numa frequencia falsa (a Rs/8 = 50 kHz da certa) e nao sai.
+# - O FLL band-edge antes do filtro casado trava com ate +-80 kHz em ~0,7 s.
+#   Banda larga (2*pi/500) acerta rapido mas, com SNR baixa, impede a
+#   decodificacao; 2*pi/20000 nao piora a BLER.
+# - Mesmo com o FLL, o Costas ainda pode travar em falso enquanto o FLL corrige.
+#   Por isso a faixa do Costas fica limitada a +-0,1 rad/simbolo (+-6,4 kHz a
+#   400 kbaud): ele so precisa corrigir o residuo que o FLL deixa.
+FLL_BANDA = 2 * np.pi / 20000      # rad/amostra
+COSTAS_FAIXA = 0.1                 # rad/simbolo
+
+# Banda dos lacos de sincronismo do RX. Os valores antigos (Costas 2*pi/200,
+# Gardner 0,045) deixam passar muito ruido para a fase e para o instante de
+# amostragem: em simulacao, com Es/N0 de 4,5 dB, a BLER caiu de 2,1e-1 para
+# 0 erros em 7223 quadros com os valores abaixo (~2,5 dB de ganho).
+# O simulador nao tem ruido de fase dos osciladores: se no hardware ficar pior,
+# tente COSTAS_BANDA = 2 * np.pi / 400.
+COSTAS_BANDA = 2 * np.pi / 800     # rad/simbolo (antes: 2*pi/200)
+GARDNER_BANDA = 0.01               # normalizada, por simbolo (antes: 0,045)
+
+
+def sequencia_embaralhamento(n, estado=0x7FFF):
+    """PN15 (x^15 + x^14 + 1): n bits pseudoaleatorios, os mesmos em todo quadro, no TX e no RX.
+    O codigo polar de taxa baixa gera palavras muito estruturadas: com R = 0,1 so 25% dos
+    simbolos vizinhos sao diferentes (dados aleatorios: 75%) e ha sequencias de ate 72 simbolos
+    iguais. Sem transicoes, o Gardner perde o instante de amostragem e o quadro se perde mesmo
+    com sinal forte. O XOR com esta sequencia deixa a palavra parecida com dados aleatorios
+    (como no 5G); no RX basta trocar o sinal dos LLRs onde a sequencia vale 1."""
+    bits = np.empty(n, dtype=np.uint8)
+    for i in range(n):
+        b = ((estado >> 14) ^ (estado >> 13)) & 1
+        estado = ((estado << 1) | b) & 0x7FFF
+        bits[i] = b
+    return bits
+
 
 def validar_access_code(access_code):
     """O access code vira bytes no TX e simbolos QPSK (pares de bits) no RX."""
@@ -371,6 +422,7 @@ class qpsk_5g_hw(gr.top_block):
         self.samp_rate_probe = samp_rate_probe = 0
         self.baud_rate_probe = baud_rate_probe = 0
         self.bler_probe = bler_probe = 'aguardando quadros...'
+        self.desvio_probe = desvio_probe = 0.0     # desvio de frequencia TX-RX medido (Hz)
         self.PC_enc = PC_enc = fec.polar_encoder.make(N,K, frozen_pos, frozen_val, False)
         self.PC_dec = PC_dec = fec.polar_decoder_sc.make(N,K, frozen_pos, frozen_val)
 
@@ -391,6 +443,11 @@ class qpsk_5g_hw(gr.top_block):
         self.epy_block_2 = epy_block_2.blk(bits_por_quadro=self.bits_dados, bits_numero=self.bits_numero)
         self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, self.bits_dados, "quadro")
         self.digital_crc32_bb_0_0 = digital.crc32_bb(False, "quadro", False)
+        # Embaralhador: XOR dos N bits de cada palavra-codigo com a sequencia PN15
+        # (a sequencia repete a cada N bits, entao fica alinhada com os quadros)
+        self.blocks_vector_source_embaralha = blocks.vector_source_b(
+            tuple(int(b) for b in sequencia_embaralhamento(self.N)), True, 1, [])
+        self.blocks_xor_embaralha = blocks.xor_bb()
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=self.PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
         self.blocks_vector_source_x_0 = blocks.vector_source_b(
             tuple(int(self.access_code[i:i + 8], 2) for i in range(0, self.sync_len, 8)), True, 1, [])
@@ -421,7 +478,9 @@ class qpsk_5g_hw(gr.top_block):
         self.connect((self.epy_block_2, 0), (self.blocks_stream_to_tagged_stream_0, 0))
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_crc32_bb_0_0, 0))
         self.connect((self.digital_crc32_bb_0_0, 0), (self.fec_extended_tagged_encoder_0, 0))
-        self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_stream_mux_0, 1))
+        self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_xor_embaralha, 0))
+        self.connect((self.blocks_vector_source_embaralha, 0), (self.blocks_xor_embaralha, 1))
+        self.connect((self.blocks_xor_embaralha, 0), (self.blocks_stream_mux_0, 1))
         self.connect((self.blocks_vector_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0_0, 0))
         self.connect((self.blocks_unpack_k_bits_bb_0_0, 0), (self.blocks_stream_mux_0, 0))
         self.connect((self.blocks_stream_mux_0, 0), (self.blocks_pack_k_bits_bb_1, 0))
@@ -448,13 +507,14 @@ class qpsk_5g_hw(gr.top_block):
         self.osmosdr_source_0.set_bb_gain(0, 0)
         self.osmosdr_source_0.set_antenna('', 0)
         self.osmosdr_source_0.set_bandwidth(0, 0)
+        self.digital_fll_band_edge_cc_0 = digital.fll_band_edge_cc(self.rx_sps, 0.25, 6*self.rx_sps + 1, FLL_BANDA)
         self.interp_fir_filter_xxx_1 = filter.interp_fir_filter_ccc(1, self.rx_taps/self.rx_sps)
         self.interp_fir_filter_xxx_1.declare_sample_delay(0)
         self.analog_agc_xx_0 = analog.agc_cc((1e-4), 1.0, 1.0, 1e3)
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_cc(
             digital.TED_GARDNER,
             self.rx_sps,
-            0.045,
+            GARDNER_BANDA,
             1.0,
             1.0,
             0.02,
@@ -464,9 +524,16 @@ class qpsk_5g_hw(gr.top_block):
             128,
             [])
         self.blocks_multiply_const_vxx_0 = blocks.multiply_const_cc(0.5)
-        self.digital_costas_loop_cc_0 = digital.costas_loop_cc((2*np.pi/200), 4, False)
+        self.digital_costas_loop_cc_0 = digital.costas_loop_cc(COSTAS_BANDA, 4, False)
+        self.digital_costas_loop_cc_0.set_max_freq(COSTAS_FAIXA)    # o desvio grosso fica com o FLL
+        self.digital_costas_loop_cc_0.set_min_freq(-COSTAS_FAIXA)
         self.digital_constellation_soft_decoder_cf_0 = digital.constellation_soft_decoder_cf(self.qpsk, -1)
         self.epy_block_0_0 = epy_block_0_0.blk(access_code=self.access_code, payload_len_in_bits=self.N, tag_key="quadro", threshold=LIMIAR_AC)
+        # Desembaralhador: o Find Access Code entrega N LLRs por quadro; onde a
+        # sequencia PN15 vale 1, o bit foi invertido no TX, entao o LLR troca de sinal
+        self.blocks_vector_source_desembaralha = blocks.vector_source_f(
+            tuple(float(v) for v in 1.0 - 2.0 * sequencia_embaralhamento(self.N)), True, 1, [])
+        self.blocks_multiply_desembaralha = blocks.multiply_ff(1)
         self.fec_extended_tagged_decoder_0 = fec.extended_tagged_decoder(decoder_obj_list=self.PC_dec, ann=None, puncpat='11', integration_period=10000, lentagname="quadro", mtu=1500)
         self.digital_crc32_bb_0 = digital.crc32_bb(True, "quadro", False)
 
@@ -481,12 +548,14 @@ class qpsk_5g_hw(gr.top_block):
         self._iniciar_probe(self.blocks_probe_rate_0_0.rate, self.set_samp_rate_probe)
         self._iniciar_probe(self.blocks_probe_rate_0.rate, self.set_baud_rate_probe)
         self._iniciar_probe(self.epy_block_1.resumo, self.set_bler_probe)
+        self._iniciar_probe(self._ler_desvio, self.set_desvio_probe)
 
         ##################################################
         # Connections - RX
         ##################################################
         self.connect((self.osmosdr_source_0, 0), (self.blocks_probe_rate_0_0, 0))
-        self.connect((self.osmosdr_source_0, 0), (self.interp_fir_filter_xxx_1, 0))
+        self.connect((self.osmosdr_source_0, 0), (self.digital_fll_band_edge_cc_0, 0))
+        self.connect((self.digital_fll_band_edge_cc_0, 0), (self.interp_fir_filter_xxx_1, 0))
         self.connect((self.interp_fir_filter_xxx_1, 0), (self.analog_agc_xx_0, 0))
         self.connect((self.analog_agc_xx_0, 0), (self.digital_symbol_sync_xx_0, 0))
         self.connect((self.digital_symbol_sync_xx_0, 0), (self.blocks_multiply_const_vxx_0, 0))
@@ -494,10 +563,18 @@ class qpsk_5g_hw(gr.top_block):
         self.connect((self.digital_costas_loop_cc_0, 0), (self.blocks_probe_rate_0, 0))
         self.connect((self.digital_costas_loop_cc_0, 0), (self.digital_constellation_soft_decoder_cf_0, 0))
         self.connect((self.digital_constellation_soft_decoder_cf_0, 0), (self.epy_block_0_0, 0))
-        self.connect((self.epy_block_0_0, 0), (self.fec_extended_tagged_decoder_0, 0))
+        self.connect((self.epy_block_0_0, 0), (self.blocks_multiply_desembaralha, 0))
+        self.connect((self.blocks_vector_source_desembaralha, 0), (self.blocks_multiply_desembaralha, 1))
+        self.connect((self.blocks_multiply_desembaralha, 0), (self.fec_extended_tagged_decoder_0, 0))
         self.connect((self.fec_extended_tagged_decoder_0, 0), (self.digital_crc32_bb_0, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.blocks_probe_rate_0_1, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.epy_block_1, 0))
+
+    def _ler_desvio(self):
+        """Desvio de frequencia do sinal recebido (Hz): o que o FLL corrige mais o residuo do Costas."""
+        fll = -self.digital_fll_band_edge_cc_0.get_frequency() * self.rx_sps   # rad/simbolo
+        costas = self.digital_costas_loop_cc_0.get_frequency()                 # rad/simbolo
+        return (fll + costas) * self.baud_rate / (2 * np.pi)
 
     def _iniciar_probe(self, leitura, setter, periodo=0.5):
         """Thread que, a cada 'periodo' s, le um medidor e grava o valor na variavel."""
@@ -549,6 +626,7 @@ class qpsk_5g_hw(gr.top_block):
         self._atualizar_taxas()
         if self.tem_rx:
             self.digital_symbol_sync_xx_0.set_sps(self.rx_sps)
+            self.digital_fll_band_edge_cc_0.set_samples_per_symbol(self.rx_sps)
 
     def get_tx_samp_rate(self):
         return self.tx_samp_rate
@@ -720,6 +798,12 @@ class qpsk_5g_hw(gr.top_block):
     def set_bler_probe(self, bler_probe):
         self.bler_probe = bler_probe
 
+    def get_desvio_probe(self):
+        return self.desvio_probe
+
+    def set_desvio_probe(self, desvio_probe):
+        self.desvio_probe = desvio_probe
+
 
 # Fatores ajustaveis no terminal; main() reduz esta lista conforme o modo.
 FATORES = ('freq', 'rftxgain', 'iftxgain', 'rf_gain')
@@ -830,7 +914,7 @@ def aplicar_comando(tb, linha):
         print('Radio: ' + ', '.join(f'{n} = {getattr(tb, "get_" + n)()}' for n in FATORES))
 
 
-ALTURA_PAINEL = 4   # linhas reservadas no rodape do terminal
+ALTURA_PAINEL = 5   # linhas reservadas no rodape do terminal
 
 
 def _linhas():
@@ -861,14 +945,16 @@ def painel_encerrar():
 
 
 def linhas_painel(tb):
-    """As 3 linhas de dados do painel; com RX mostra os medidores, so com TX mostra o que esta no ar."""
+    """As 4 linhas de dados do painel; com RX mostra os medidores, so com TX mostra o que esta no ar."""
     if tb.tem_rx:
         return [f' BLER     : {tb.get_bler_probe()}',
                 f' Vazao    : {tb.get_vazao_probe():,.0f} bit/s',
-                f' Baudrate : {tb.get_baud_rate_probe():,.0f} baud']
+                f' Baudrate : {tb.get_baud_rate_probe():,.0f} baud',
+                f' Desvio   : {tb.get_desvio_probe() / 1e3:+.1f} kHz (frequencia do sinal recebido)']
     return [f' Modo     : {tb.modo}   (transmitindo)',
             f' Freq     : {tb.get_freq():,.0f} Hz',
-            f' Ganho TX : RF {tb.get_rftxgain()} dB, IF {tb.get_iftxgain()} dB']
+            f' Ganho TX : RF {tb.get_rftxgain()} dB, IF {tb.get_iftxgain()} dB',
+            f' Codigo   : N = {tb.N}, K = {tb.K}, R = {tb.R:.3f}']
 
 
 def monitorar(tb, periodo=0.5):

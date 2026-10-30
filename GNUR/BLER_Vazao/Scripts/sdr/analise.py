@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Analisa CSVs da varredura de hardware (varredura_hw.py): BLER e vazão com IC de Wilson (95%).
+"""Analisa CSVs da varredura de hardware (varredura.py): BLER e vazão com IC de Wilson (95%).
 
 Eixo x: detectado sozinho. Entre iftxgain, rf_gain, freq e rftxgain, é a variável com mais valores
 distintos dentro de um CSV (o R só vira eixo se nada mais variar). --x força.
@@ -17,6 +17,13 @@ da que tem mais para a que tem menos (--paineis escolhe outra ordem):
 Sem R variando, cada CSV é uma curva de cor própria em todos os quadros, com o nome na legenda.
 O que não varia vai no título. Funciona com CSVs antigos (sem N, K e R) e novos.
 
+Pontos com 0 erros: não existe BLER 0 em escala log. Eles aparecem como triângulo vazio (▽) no limite
+superior do IC de 95% (~3/quadros): a BLER verdadeira está abaixo dele, e quanto menos quadros, mais alto.
+
+--eb: troca o eixo iftx por iftx - 10*log10(2R), que é Eb/N0 + constante (QPSK: 2 bits codificados por
+símbolo, R bits de informação por bit codificado). No eixo iftx as taxas recebem a mesma energia por
+SÍMBOLO; com --eb, a mesma energia por BIT DE INFORMAÇÃO (a comparação usual dos livros de códigos).
+
 Saídas (só imagens, em --saida), um arquivo para o BLER e outro para a vazão:
   <prefixo>_ic.png          BLER x eixo x, faixa completa
   <prefixo>_ic_zoom.png     BLER, só o intervalo em que ele realmente varia (detectado sozinho)
@@ -29,6 +36,7 @@ Exemplos:
   python analise.py resultado_2210.csv
   python analise.py resultado_2210.csv resultado_22101.csv --rotulo 2210=manhã --rotulo 22101=tarde
   python analise.py resultado_2210.csv --x iftxgain --paineis rf_gain --faixa 10,30
+  python analise.py resultado_25101.csv --eb
 """
 import argparse
 from pathlib import Path
@@ -38,7 +46,7 @@ import numpy as np
 import pandas as pd
 from matplotlib.lines import Line2D
 
-PISO = 1e-5  # BLER = 0 não aparece em escala log; plota como este piso
+PISO = 1e-7  # menor BLER que o gráfico mostra (0 erros vai no limite superior do IC, não aqui)
 MARCAS = "o^sDvP*X"
 LINHAS = ["-", "--", ":", "-."]   # distinguem os CSVs quando a cor é do R
 VARIAVEIS = ["R", "iftxgain", "rftxgain", "rf_gain", "freq"]   # o que a varredura pode variar
@@ -286,8 +294,14 @@ def grafico(layout, x, limiar, metrica="bler", xlim=None, fixos="", extra=""):
             lo, hi = wilson(g.erros.values, g.quadros.values)
             col, marca, ls = cor(cv["cor"], n_cores), MARCAS[cv["estilo"] % len(MARCAS)], linha(cv["estilo"])
             if metrica == "bler":
+                # 0 erros: o ponto vai no limite superior do IC (a BLER é menor que isso), como ▽ vazio
+                zero = g.erros.values == 0
+                y = np.clip(np.where(zero, hi, g.bler.values), PISO, 1)
+                xv = np.asarray(xs)
                 a.fill_between(xs, np.clip(lo, PISO, 1), np.clip(hi, PISO, 1), color=col, alpha=0.2)
-                a.plot(xs, g.bler.clip(lower=PISO), marker=marca, ms=4, color=col, ls=ls)
+                a.plot(xv, y, color=col, ls=ls)
+                a.plot(xv[~zero], y[~zero], ls="none", marker=marca, ms=4, color=col)
+                a.plot(xv[zero], y[zero], ls="none", marker="v", ms=6, mfc="white", color=col)
             else:
                 nominal = g["_nominal"].values / 1e3   # próprio de cada R (muda com a taxa)
                 a.fill_between(xs, nominal * (1 - hi), nominal * (1 - lo), color=col, alpha=0.2)
@@ -323,7 +337,7 @@ def grafico(layout, x, limiar, metrica="bler", xlim=None, fixos="", extra=""):
                 a.set_ylabel("BLER" if metrica == "bler" else "Vazão (kbps)", fontsize=8)
 
     if metrica == "bler":
-        tit = f"BLER com IC 95% Wilson (BLER 0 plotado em {PISO:g}; tracejado = limiar)"
+        tit = "BLER com IC 95% Wilson (▽ = 0 erros: BLER abaixo do ponto; tracejado = limiar)"
     else:
         tit = "Vazão com IC 95% Wilson do BLER convertido em vazão"
     tit += extra + (f"\nfixos: {fixos}" if fixos else "")
@@ -331,7 +345,7 @@ def grafico(layout, x, limiar, metrica="bler", xlim=None, fixos="", extra=""):
     fig.legend(handles=[Line2D([], [], color=cor(kc, n_cores), marker=MARCAS[ke % len(MARCAS)],
                                ls=linha(ke), label=t) for t, kc, ke in legenda],
                loc="lower center", ncol=ncol, frameon=False, fontsize=9)
-    fig.tight_layout(rect=[0, 0.05 * linhas_leg + 0.02, 1, 1])
+    fig.tight_layout(rect=[0, (0.22 * linhas_leg + 0.25) / tam[1], 1, 1])   # espaço só do tamanho da legenda
     return fig
 
 
@@ -374,6 +388,9 @@ def main():
     p.add_argument("--rotulo", action="append", default=[], metavar="CHAVE=TEXTO",
                    help="nome na legenda para o CSV cujo nome termina em CHAVE (repetível)")
     p.add_argument("--mostrar", action="store_true", help="abre os gráficos na tela")
+    p.add_argument("--eb", action="store_true",
+                   help="eixo x = iftx - 10*log10(2R) = Eb/N0 + constante: compara as taxas com a mesma "
+                        "energia por bit de informação (só com o eixo iftxgain)")
     a = p.parse_args()
 
     for r in a.rotulo:
@@ -397,6 +414,14 @@ def main():
         p.error("nenhuma variável varia nos CSVs: não há o que colocar no eixo x")
     if x not in varia:
         p.error(f"--x {x}: essa variável tem um valor só em cada CSV")
+    if a.eb:
+        if x != "iftxgain":
+            p.error("--eb só vale com o eixo x iftxgain (o rf_gain do RX não muda o Es/N0 dB a dB)")
+        if any(df["R"].isna().any() for df in dfs.values()):
+            p.error("--eb precisa da coluna R em todos os CSVs")
+        for df in dfs.values():
+            df["iftxgain"] = (df["iftxgain"] - 10 * np.log10(2 * df["R"])).round(2)
+        NOMES_X["iftxgain"] = "iftx − 10·log10(2R) (dB) = Eb/N0 + constante"
     # Das variáveis que variam além do x (da de mais valores para a de menos): as duas primeiras,
     # sem contar o R, definem os quadros; as que sobram (e o R) viram curvas. O R só vira quadro
     # se --paineis pedir.
@@ -444,7 +469,7 @@ def main():
         print(resumo(df, x, resto, a.limiar).to_string(index=False, float_format=lambda v: f"{v:.3g}"))
 
     curvas = [cv for cel in layout["celulas"] for cv in cel["curvas"]]   # todas, para achar o zoom
-    prefixo = next(iter(dfs)) if len(dfs) == 1 else "comparacao"
+    prefixo = (next(iter(dfs)) if len(dfs) == 1 else "comparacao") + ("_eb" if a.eb else "")
     metricas = ["bler", "vazao"]
 
     zoom = faixa or intervalo_transicao(curvas)

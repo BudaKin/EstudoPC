@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Varredura do link HackRF -> RTL-SDR. Grava BLER e vazão em CSV.
 Cada variável aceita INICIO FIM PASSO (varre) ou VALOR (fixa). Começa do maior ganho. Exemplo:
-  python3 varredura_hw-c.py --iftx 0 45 5 --rftx 14 --rfrx 0 50 10 -o saida.csv
+  python3 varredura.py --iftx 0 45 5 --rftx 14 --rfrx 0 50 10 -o saida.csv
 O --R (taxa do código polar K/N, aceita 0.5 ou 1/2) segue a mesma regra: VALOR fixa, INICIO FIM PASSO varre
 (padrão: --R 1/3 2/3 1/6, ou seja, 1/3, 1/2 e 2/3; --R 0.1 0.9 0.1 varre de 0,1 a 0,9). A varredura de
 ganhos roda inteira para o primeiro R, depois para o segundo, e assim por diante. O R só se define na
@@ -16,6 +16,9 @@ na conta do mesmo jeito. Precisa do qpsk_5g_hw.py com a numeração de quadros (
 
 Antes de varrer, o script espera o enlace subir: só começa quando os primeiros quadros certos saírem
 do CRC (até --espera segundos). Esses quadros também servem para medir o atraso TX->RX.
+Depois, só na primeira taxa, deixa os rádios ligados por --aquecer segundos sem medir: nos primeiros
+minutos o HackRF e o RTL-SDR esquentam, a frequência dos cristais muda, e o primeiro R medido (o 0,1,
+numa varredura de 0,1 a 0,9) ficaria em condições diferentes dos outros.
 
 Num terminal, o progresso fica num painel fixo no rodapé (ponto atual, fase, quadros e erros da
 medição em andamento, tempo decorrido e restante); as mensagens rolam acima dele. --sem-painel desliga.
@@ -26,7 +29,12 @@ resultado_DDMM1.csv, resultado_DDMM2.csv... nos seguintes (ex.: 2210, 22101, 221
 Colunas do CSV: N, K e R do código polar; os ganhos do ponto; amostras (duração da janela, em amostras do RTL-SDR);
 quadros (N); erros; bler; vazao_bps (bits certos por segundo); baud_rate (taxa de amostras
 entregue pelo RTL-SDR / sps: só confere o RTL, não o enlace); rajadas (quantas sequências de
-quadros perdidos); maior_rajada (a mais longa, em quadros)."""
+quadros perdidos); maior_rajada (a mais longa, em quadros); hora (fim do ponto, HH:MM:SS);
+desvio_khz (desvio de frequência TX-RX medido pelo FLL + Costas no fim do ponto; vazio se o
+qpsk_5g_hw.py não tiver FLL). Com hora e desvio dá para ver se um ponto estranho coincide com uma
+deriva de frequência (aquecimento, temperatura da sala).
+Um ponto com BLER 1 numa só rajada (rajadas = 1, maior_rajada = quadros) entre vizinhos bem melhores
+é perda de sincronismo, não desempenho do código: meça esse ponto de novo."""
 import argparse, csv, datetime, gc, re, shutil, sys, threading, time
 from pathlib import Path
 
@@ -78,6 +86,9 @@ ap.add_argument('--erros', type=int, default=0,
 ap.add_argument('--espera', type=float, default=30, metavar='S',
                 help='segundos esperando os primeiros quadros antes de começar a varrer (padrão: 30; '
                      '0 = não espera). Se estourar, avisa e varre mesmo assim')
+ap.add_argument('--aquecer', type=float, default=60, metavar='S',
+                help='segundos com os rádios ligados antes do primeiro ponto, só na primeira taxa '
+                     '(padrão: 60; 0 = não aquece)')
 ap.add_argument('--sem-painel', action='store_true',
                 help='não reserva o rodapé do terminal; só imprime mensagens (útil para redirecionar a saída)')
 ap.add_argument('--R', type=hw.fracao, nargs='+', default=[1 / 3, 2 / 3, 1 / 6], metavar='TAXA',
@@ -97,6 +108,8 @@ if args.erros < 0:
     sys.exit('--erros não pode ser negativo')
 if args.espera < 0:
     sys.exit('--espera não pode ser negativo')
+if args.aquecer < 0:
+    sys.exit('--aquecer não pode ser negativo')
 def faixa(v, opcao='valor'):
     """VALOR -> [VALOR];  INICIO FIM PASSO -> INICIO, INICIO+PASSO, ... até FIM."""
     if len(v) == 1:
@@ -217,14 +230,14 @@ atual = {}
 estado = {'fase': 'iniciando', 'i': 0, 'r_i': 0, 'K': None, 'concluidos': 0, 'ponto': {}, 'ultimo': None,
           'decidido': 0, 'ok': 0, 't_inicio': time.monotonic(), 't_ponto': None, 't_fase': None}
 # Peças do R atual: montar() cria, liberar() derruba. As funções abaixo as lêem daqui.
-tb = numerador = costas = c = q = None
+tb = numerador = costas = fll = c = q = None
 MODULO = taxa_amostragem = amostras_por_quadro = periodo_quadro = n_quadros = None
 
 
 def montar(K, tentativas=1):
     """Cria o flowgraph da taxa K/N (é aqui que HackRF e RTL-SDR são abertos) e as peças da medição.
     Na troca de R os rádios podem demorar a ser soltos, então tenta algumas vezes."""
-    global tb, numerador, costas, c, q, MODULO
+    global tb, numerador, costas, fll, c, q, MODULO
     global taxa_amostragem, amostras_por_quadro, periodo_quadro, n_quadros
     for tentativa in range(1, tentativas + 1):
         try:
@@ -239,6 +252,7 @@ def montar(K, tentativas=1):
             time.sleep(PAUSA_ENTRE_R)
     numerador = tb.epy_block_2       # TX: escreve o número em cada quadro
     costas = tb.digital_costas_loop_cc_0
+    fll = getattr(tb, 'digital_fll_band_edge_cc_0', None)   # só existe no qpsk_5g_hw.py com FLL
     c = ContadorAmostras()
     q = ContadorQuadros(numerador.bits_por_quadro, numerador.bits_numero)
     tb.connect((tb.osmosdr_source_0, 0), (c, 0))
@@ -256,12 +270,12 @@ def montar(K, tentativas=1):
 
 def liberar(pausa=True):
     """Para e destrói o flowgraph atual, soltando HackRF e RTL-SDR para o próximo R."""
-    global tb, numerador, costas, c, q
+    global tb, numerador, costas, fll, c, q
     estado['fase'] = 'liberando os rádios'    # o painel só lê c/taxa nas fases de medição
     if tb is not None:
         tb.stop()
         tb.wait()
-    tb = numerador = costas = c = q = None    # sem referências, o GNU Radio fecha os rádios
+    tb = numerador = costas = fll = c = q = None    # sem referências, o GNU Radio fecha os rádios
     gc.collect()
     if pausa:
         time.sleep(PAUSA_ENTRE_R)
@@ -320,6 +334,19 @@ def aguardar_primeiros_quadros(limite, minimo=QUADROS_INICIAIS):
         if agora - ultimo_aviso >= 5:
             ultimo_aviso = agora
             print(f'  ainda sem quadros certos ({agora - inicio:.0f} s de {limite:g} s)...')
+
+
+def aquecer(segundos):
+    """Deixa TX e RX ligados 'segundos' sem medir. Conta pelas amostras do RTL-SDR (dá erro se ele parar)."""
+    estado.update(fase='aquecendo', alvo_aquecer=c.n + segundos * taxa_amostragem, t_fase=time.monotonic())
+    print(f'aquecendo os rádios por {segundos:g} s antes do primeiro ponto (--aquecer)...')
+    esperar(estado['alvo_aquecer'])
+
+
+def ler_desvio_khz():
+    """Desvio de frequência TX-RX (kHz) que o receptor está corrigindo; '' se o flowgraph não tiver FLL."""
+    leitura = getattr(tb, '_ler_desvio', None)
+    return round(leitura() / 1e3, 2) if leitura else ''
 
 
 def medir(n, limite_erros):
@@ -393,6 +420,9 @@ def linhas_painel():
               f"quadros certos, {dt:.0f} s de {estado.get('limite', 0):g} s")
     elif fase == 'latencia':
         l2 = f' Medindo o atraso TX->RX ({dt:.1f} s)'
+    elif fase == 'aquecendo':
+        falta = max(estado['alvo_aquecer'] - c.n, 0) / taxa_amostragem
+        l2 = f' Aquecendo os rádios (sem medir): faltam {falta:.0f} s'
     elif fase == 'descarte':
         falta = max(estado['alvo_descarte'] - c.n, 0) / taxa_amostragem
         l2 = f' Estabilizando o receptor (descarte): faltam {falta:.1f} s'
@@ -448,7 +478,7 @@ def monitorar_painel(fim, periodo=0.5):
 
 
 colunas = ['N', 'K', 'R'] + list(PADRAO) + ['amostras', 'quadros', 'erros', 'bler', 'vazao_bps',
-                                            'baud_rate', 'rajadas', 'maior_rajada']
+                                            'baud_rate', 'rajadas', 'maior_rajada', 'hora', 'desvio_khz']
 arquivo = open(args.csv, 'w', newline='')
 escritor = csv.DictWriter(arquivo, fieldnames=colunas)
 escritor.writeheader()
@@ -457,7 +487,7 @@ arquivo.flush()
 usar_painel = sys.stdout.isatty() and not args.sem_painel
 fim_painel = threading.Event()
 if usar_painel:
-    hw.ALTURA_PAINEL = ALTURA_PAINEL      # o painel do qpsk_5g_hw tem 4 linhas; este tem 6
+    hw.ALTURA_PAINEL = ALTURA_PAINEL      # o painel do qpsk_5g_hw tem 4 ou 5 linhas; este tem 6
     hw.painel_iniciar()                   # reserva o rodapé; apaga a tela, então as mensagens vêm depois
     thread_painel = threading.Thread(target=monitorar_painel, args=(fim_painel,), daemon=True)
     thread_painel.start()
@@ -467,11 +497,15 @@ try:
     print('taxas do código polar (R): ' + ', '.join(f'{k / args.N:.3f} (K = {k})' for k in Ks)
           + f'   N = {args.N}')
     print('espera pelos primeiros quadros: ' + (f'até {args.espera:g} s' if args.espera else 'desligada'))
+    print('aquecimento antes do primeiro ponto: ' + (f'{args.aquecer:g} s' if args.aquecer else 'desligado'))
     for r_i, K in enumerate(Ks, 1):
-        estado.update(fase='abrindo os rádios', r_i=r_i, K=K, i=0, ponto={}, t_ponto=None, t_fase=None)
+        estado.update(fase='abrindo os rádios', r_i=r_i, K=K, i=0, ponto={}, t_ponto=None, t_fase=None,
+                      bler_anterior=1.0, suspeito=None)
         montar(K, tentativas=1 if r_i == 1 else TENTATIVAS_RADIO)
+        if fll is None and r_i == 1:
+            print('AVISO: este qpsk_5g_hw.py não tem FLL (versão antiga): a coluna desvio_khz fica vazia')
         if r_i == 1:
-            estimado = len(Ks) * (2 + len(pontos) * (args.amostras / taxa_amostragem + 1.5))
+            estimado = args.aquecer + len(Ks) * (2 + len(pontos) * (args.amostras / taxa_amostragem + 1.5))
             print(f"{len(Ks)} taxa{'s' if len(Ks) > 1 else ''} x {len(pontos)} pontos, {n_quadros} quadros por ponto, "
                   f'tempo estimado: {formatar(estimado)}'
                   + (' (menos, se --erros encerrar pontos antes)' if args.erros else ''))
@@ -486,9 +520,12 @@ try:
         elif args.espera:
             print(f'AVISO: nenhum quadro certo em {args.espera:g} s; varrendo mesmo assim '
                   f'(confira antenas, ganhos e se o TX está no ar)')
+        if r_i == 1 and args.aquecer:
+            aquecer(args.aquecer)
         medida = medir_latencia()      # com o enlace de pé, 2 s bastam para ver o maior atraso
         latencia = 2 * medida + 200 if medida is not None else LATENCIA_PADRAO
         f_bom = costas.get_frequency() if medida is not None else 0.0
+        fll_bom = fll.get_frequency() if fll is not None and medida is not None else 0.0
         print(f'atraso TX->RX medido: {medida} quadros; limite usado: {latencia} quadros '
               f'({latencia * periodo_quadro:.1f} s)')
         estado.setdefault('t_pontos', time.monotonic())    # início da contagem do tempo restante
@@ -496,8 +533,11 @@ try:
             estado.update(i=i, ponto=ponto, t_ponto=time.monotonic())
             aplicar(ponto)
             # Se o sinal sumiu no ponto anterior, o Costas pode ter ficado travado numa frequência
-            # errada (e não sai de lá nem com sinal bom). Volta para a do último ponto com enlace.
+            # errada (e não sai de lá nem com sinal bom) e o FLL pode ter andado com o ruído.
+            # Os dois voltam para a frequência do último ponto com enlace.
             costas.set_frequency(f_bom)
+            if fll is not None:
+                fll.set_frequency(fll_bom)
             estado.update(fase='descarte', alvo_descarte=c.n + DESCARTE, t_fase=time.monotonic())
             esperar(estado['alvo_descarte'])                  # deixa o receptor estabilizar
             a0, t0 = c.n, time.monotonic()
@@ -505,20 +545,36 @@ try:
             a1, t1 = c.n, time.monotonic()
             erros = quadros - ok
             bler = erros / quadros
+            desvio = ler_desvio_khz()
             if bler < 0.1:
                 f_bom = costas.get_frequency()
+                if fll is not None:
+                    fll_bom = fll.get_frequency()
             vazao = ok * numerador.bits_por_quadro / (quadros * periodo_quadro)   # bits certos por segundo
             baud = (a1 - a0) / (t1 - t0) / tb.get_rx_sps()
             escritor.writerow({'N': tb.N, 'K': tb.K, 'R': round(tb.R, 4), **ponto,
                                'amostras': quadros * amostras_por_quadro, 'quadros': quadros,
                                'erros': erros, 'bler': bler, 'vazao_bps': round(vazao, 1),
-                               'baud_rate': round(baud, 1), 'rajadas': rajadas, 'maior_rajada': maior})
+                               'baud_rate': round(baud, 1), 'rajadas': rajadas, 'maior_rajada': maior,
+                               'hora': datetime.datetime.now().strftime('%H:%M:%S'), 'desvio_khz': desvio})
             arquivo.flush()                                   # cada ponto vai para o disco na hora
             estado['ultimo'] = {'bler': bler, 'vazao': vazao, 'erros': erros, 'quadros': quadros, 'R': tb.R}
             estado['concluidos'] = (r_i - 1) * len(pontos) + i
             texto = f'BLER {bler:.2e}' if erros else f'BLER < {3 / quadros:.1e} (0 erros; 95% de confiança)'
             print(f'[R {tb.R:.3f}  {i}/{len(pontos)}] {ponto}  ->  {texto}  {vazao / 1e3:.1f} kbit/s, '
-                  f'quadros: {quadros}, erros: {erros}, rajadas: {rajadas}')
+                  f'quadros: {quadros}, erros: {erros}, rajadas: {rajadas}'
+                  + (f', desvio {desvio:+.1f} kHz' if desvio != '' else ''))
+            # Perda total numa só rajada (nenhum quadro certo) entre dois vizinhos em que passaram
+            # quadros: a BLER não pode ser pior que a dos dois lados, então foi o receptor que perdeu o
+            # sincronismo durante o ponto. Só avisa; o ponto fica no CSV como foi medido.
+            if estado.get('suspeito') and bler < 0.9:
+                print(f"  AVISO: o ponto anterior ({estado['suspeito']}) perdeu todos os quadros numa só "
+                      f'rajada, mas os vizinhos não: parece perda de sincronismo, não o código. '
+                      f'Meça esse ponto de novo.')
+            perda_total = erros == quadros and rajadas == 1
+            estado['suspeito'] = (f'R {tb.R:.3f}, {ponto}' if perda_total and estado['bler_anterior'] < 0.9
+                                  else None)
+            estado['bler_anterior'] = bler
         if r_i < len(Ks):
             liberar()                 # solta os rádios para o próximo R abri-los
     fase_final = 'Varredura concluída.'
