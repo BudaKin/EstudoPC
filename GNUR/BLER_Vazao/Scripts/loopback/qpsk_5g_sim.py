@@ -5,32 +5,30 @@
 # SPDX-License-Identifier: GPL-3.0
 #
 # GNU Radio Python Flow Graph
-# Title: QPSK - 5G (TX HackRF e/ou RX RTL-SDR)
+# Title: QPSK - 5G (simulacao: TX -> canal -> RX)
 # GNU Radio version: 3.10.12.0
 #
 # Uso:
-#   python3 qpsk_5g_hw.py --modo tx        # so transmite (HackRF)
-#   python3 qpsk_5g_hw.py --modo rx        # so recebe (RTL-SDR)
-#   python3 qpsk_5g_hw.py                  # os dois no mesmo computador (tx+rx)
-#   python3 qpsk_5g_hw.py --R 1/3          # muda a taxa do codigo (padrao 1/2)
-#   python3 qpsk_5g_hw.py --R 3/4 --N 512  # taxa e tamanho do bloco polar
+#   python3 qpsk_5g_sim.py                       # simulacao com os valores padrao
+#   python3 qpsk_5g_sim.py --noise_v 20          # muda a tensao de ruido do canal
+#   python3 qpsk_5g_sim.py --R 1/3               # muda a taxa do codigo (padrao 1/2)
+#   python3 qpsk_5g_sim.py --R 3/4 --N 512       # taxa e tamanho do bloco polar
 #
-# Importante: TX e RX precisam rodar esta mesma versao do script. O TX numera
-# os quadros e o medidor de BLER do RX usa essa numeracao. O mesmo vale para
-# --R e --N: TX e RX precisam usar valores IGUAIS, senao o RX nao decodifica.
+# Mesmo flowgraph de qpsk_5g_hw.py, mas sem radios: o sinal do TX passa pelos
+# ganhos de TX/RX (equivalentes aos ganhos do HackRF e do RTL-SDR), por um
+# Channel Model (ruido, offset de frequencia e de clock) e por um filtro
+# decimador antes de entrar no RX. O Contador do TX escreve o numero do quadro
+# na frente dos dados e o medidor de BLER do RX usa essa numeracao.
 #
-# Access code: 160 bits (5x os 32 bits da versao anterior), definido uma unica
-# vez em ACCESS_CODE_HEX. Esta versao NAO e compativel com TX/RX da versao de
-# 32 bits: os dois lados precisam ser atualizados.
+# Sem Throttle (diferente do qpsk_5g_sim.grc): a simulacao roda o mais rapido
+# que a CPU deixar, nao em tempo real. O Baudrate do painel mostra a velocidade
+# real; Vazao e BLER nao dependem dela.
 #
-# Esta versao NAO tem embaralhador (scrambler): a palavra-codigo polar vai direto
-# para o multiplexador do access code no TX, e os LLRs do Find Access Code vao
-# direto para o decodificador polar no RX.
-# ATENCAO: TX e RX precisam ser os dois desta versao (sem embaralhador); ela nao
-# e compativel com a versao que embaralhava.
+# Access code: 160 bits, definido uma unica vez em ACCESS_CODE_HEX.
 
 from gnuradio import analog
 from gnuradio import blocks
+from gnuradio import channels
 from gnuradio import digital
 from gnuradio import fec
 from gnuradio import filter
@@ -45,7 +43,6 @@ from gnuradio import eng_notation
 import numpy as np
 from argparse import ArgumentTypeError
 from types import SimpleNamespace
-import osmosdr
 import pmt
 import threading
 import time
@@ -164,7 +161,7 @@ epy_block_0_0 = SimpleNamespace(blk=_epy_block_0_0_blk)
 Medidor de BLER por numeracao de quadros.
 
 O TX escreve um numero sequencial (0, 1, 2, ...) nos primeiros 'bits_numero'
-bits de dados de cada quadro (bloco 'Numerador de quadros', mais abaixo).
+bits de dados de cada quadro (bloco 'Contador', mais abaixo).
 Este medidor fica na saida do CRC, que so deixa passar quadros corretos, e le
 esse numero. Se chegam os quadros 7 e 10, os quadros 8 e 9 se perderam: 2 erros.
 
@@ -253,44 +250,31 @@ class _epy_block_1_blk(gr.sync_block):
 epy_block_1 = SimpleNamespace(blk=_epy_block_1_blk)
 
 
-# ---- epy_block_2: Numerador de quadros (TX) ----
+# ---- epy_block_2: Contador (TX) ----
 class _epy_block_2_blk(gr.sync_block):
     """
-    Numerador de quadros.
+    Contador: 0, 1, 2, ... com 'bits' bits cada, o mais significativo primeiro.
 
-    Escreve o numero do quadro (0, 1, 2, ..., MSB primeiro) nos primeiros
-    'bits_numero' bits de cada quadro de 'bits_por_quadro' bits de dados.
-    O resto do quadro continua aleatorio. O Medidor de BLER do RX usa esse
-    numero para saber quais quadros se perderam.
+    Fica na entrada 0 do Stream Mux que monta os dados de cada quadro: o numero
+    vai na frente dos dados, sem sobrescrever nada. O Medidor de BLER do RX usa
+    esse numero para saber quais quadros se perderam.
     """
 
-    def __init__(self, bits_por_quadro=480, bits_numero=32):
-        gr.sync_block.__init__(
-            self,
-            name='Numerador de quadros',
-            in_sig=[np.uint8],
-            out_sig=[np.uint8],
-        )
-        if bits_numero > bits_por_quadro:
-            raise ValueError('o numero do quadro nao cabe no quadro')
-        self.bits_por_quadro = int(bits_por_quadro)
-        self.bits_numero = int(bits_numero)
+    def __init__(self, bits=32):
+        gr.sync_block.__init__(self, name='Contador', in_sig=None, out_sig=[np.uint8])
+        self.bits = bits
+        self.numero = 0                       # próximo número a sair
+        self.set_output_multiple(bits)        # sempre há espaço para um número inteiro
 
     def work(self, input_items, output_items):
         out = output_items[0]
-        n = len(out)
-        out[:] = input_items[0][:n]
-        i = self.nitems_written(0) + np.arange(n, dtype=np.int64)   # indice de cada bit no fluxo
-        pos = i % self.bits_por_quadro                              # posicao do bit no quadro
-        cab = pos < self.bits_numero                                # bits reservados ao numero
-        numero = (i[cab] // self.bits_por_quadro) % (1 << self.bits_numero)
-        out[cab] = (numero >> (self.bits_numero - 1 - pos[cab])) & 1
-        return n
+        binario = format(self.numero % 2**self.bits, f'0{self.bits}b')   # ex.: 5 -> '000...101'
+        out[:self.bits] = [int(b) for b in binario]
+        self.numero += 1
+        return self.bits                      # um número (32 bits) por chamada
 
 
 epy_block_2 = SimpleNamespace(blk=_epy_block_2_blk)
-
-MODOS = ('tx', 'rx', 'tx+rx')
 
 CRC_BITS = 32    # CRC-32 anexado a cada quadro (faz parte dos K bits de informacao)
 N_MAX = 1024     # tamanho da sequencia de confiabilidade RelSeq (5G NR)
@@ -330,19 +314,13 @@ def validar_codigo(N, K, bits_numero=32):
         raise ValueError(f'K = {K} invalido para N = {N}: use {k_min} <= K <= {N - 1} '
                          f'(R entre {k_min / N:.3f} e {(N - 1) / N:.3f})')
 
+class qpsk_5g_sim(gr.top_block):
 
-class qpsk_5g_hw(gr.top_block):
-
-    def __init__(self, modo='tx+rx', tx_args='hackrf=0', rx_args='rtl=0', N=1024, K=512):
-        gr.top_block.__init__(self, "QPSK - 5G (" + modo + ")", catch_exceptions=True)
-        if modo not in MODOS:
-            raise ValueError(f'modo invalido: {modo!r} (use: {", ".join(MODOS)})')
+    def __init__(self, N=1024, K=512):
+        gr.top_block.__init__(self, "QPSK - 5G (simulacao)", catch_exceptions=True)
         validar_codigo(N, K)
         validar_access_code(ACCESS_CODE)
         self.flowgraph_started = threading.Event()
-        self.modo = modo
-        self.tem_tx = 'tx' in modo.split('+')
-        self.tem_rx = 'rx' in modo.split('+')
 
         ##################################################
         # Variables
@@ -369,10 +347,11 @@ class qpsk_5g_hw(gr.top_block):
         self.bits_numero = bits_numero = 32   # numero do quadro, no inicio dos dados de cada quadro
         self.qpsk = qpsk = digital.constellation_qpsk().base()
         self.qpsk.set_npwr(1.0)
-        self.freq = freq = 670e6
-        self.rftxgain = rftxgain = 30
-        self.iftxgain = iftxgain = 30
-        self.rf_gain = rf_gain = 30
+        self.freq = freq = 670000000          # so informativo: na simulacao nao ha radio
+        self.noise_v = noise_v = 50           # tensao de ruido do Channel Model
+        self.rftxgain = rftxgain = 0          # equivalente ao amplificador do HackRF (0 ou 14 dB)
+        self.iftxgain = iftxgain = 40
+        self.rf_gain = rf_gain = 3.7
         self.vazao_probe = vazao_probe = 0
         self.samp_rate_probe = samp_rate_probe = 0
         self.baud_rate_probe = baud_rate_probe = 0
@@ -381,20 +360,20 @@ class qpsk_5g_hw(gr.top_block):
         self.PC_dec = PC_dec = fec.polar_decoder_sc.make(N,K, frozen_pos, frozen_val)
 
         ##################################################
-        # Blocks e conexoes (so do lado pedido em 'modo')
+        # Blocks e conexoes (TX -> canal -> RX)
         ##################################################
-        if self.tem_tx:
-            self._montar_tx(tx_args)
-        if self.tem_rx:
-            self._montar_rx(rx_args)
+        self._montar_tx()
+        self._montar_canal()
+        self._montar_rx()
 
-    def _montar_tx(self, tx_args):
+    def _montar_tx(self):
         ##################################################
         # Blocks - TX
         ##################################################
         self.analog_random_uniform_source_x_0 = analog.random_uniform_source_b(0, 256, 42)
         self.blocks_unpack_k_bits_bb_0 = blocks.unpack_k_bits_bb(8)
-        self.epy_block_2 = epy_block_2.blk(bits_por_quadro=self.bits_dados, bits_numero=self.bits_numero)
+        self.epy_block_2 = epy_block_2.blk(bits=self.bits_numero)
+        self.blocks_stream_mux_1 = blocks.stream_mux(gr.sizeof_char*1, (self.bits_numero, self.bits_dados - self.bits_numero))
         self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, self.bits_dados, "quadro")
         self.digital_crc32_bb_0_0 = digital.crc32_bb(False, "quadro", False)
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=self.PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
@@ -406,25 +385,15 @@ class qpsk_5g_hw(gr.top_block):
         self.digital_constellation_encoder_bc_0 = digital.constellation_encoder_bc(self.qpsk)
         self.interp_fir_filter_xxx_0 = filter.interp_fir_filter_ccc(self.tx_sps, self.tx_taps)
         self.interp_fir_filter_xxx_0.declare_sample_delay(0)
-        self.osmosdr_sink_0 = osmosdr.sink(
-            args="numchan=" + str(1) + " " + tx_args
-        )
-        self.osmosdr_sink_0.set_time_unknown_pps(osmosdr.time_spec_t())
-        self.osmosdr_sink_0.set_sample_rate(self.tx_samp_rate)
-        self.osmosdr_sink_0.set_center_freq(self.freq, 0)
-        self.osmosdr_sink_0.set_freq_corr(0, 0)
-        self.osmosdr_sink_0.set_gain(self.rftxgain, 0)
-        self.osmosdr_sink_0.set_if_gain(self.iftxgain, 0)
-        self.osmosdr_sink_0.set_bb_gain(0, 0)
-        self.osmosdr_sink_0.set_antenna('', 0)
-        self.osmosdr_sink_0.set_bandwidth(0, 0)
+        self.blocks_multiply_const_vxx_1 = blocks.multiply_const_cc(10**((self.rftxgain + self.iftxgain)/20))
 
         ##################################################
         # Connections - TX
         ##################################################
         self.connect((self.analog_random_uniform_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0, 0))
-        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.epy_block_2, 0))
-        self.connect((self.epy_block_2, 0), (self.blocks_stream_to_tagged_stream_0, 0))
+        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.blocks_stream_mux_1, 1))
+        self.connect((self.epy_block_2, 0), (self.blocks_stream_mux_1, 0))
+        self.connect((self.blocks_stream_mux_1, 0), (self.blocks_stream_to_tagged_stream_0, 0))
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_crc32_bb_0_0, 0))
         self.connect((self.digital_crc32_bb_0_0, 0), (self.fec_extended_tagged_encoder_0, 0))
         self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_stream_mux_0, 1))
@@ -433,30 +402,37 @@ class qpsk_5g_hw(gr.top_block):
         self.connect((self.blocks_stream_mux_0, 0), (self.blocks_pack_k_bits_bb_1, 0))
         self.connect((self.blocks_pack_k_bits_bb_1, 0), (self.digital_constellation_encoder_bc_0, 0))
         self.connect((self.digital_constellation_encoder_bc_0, 0), (self.interp_fir_filter_xxx_0, 0))
-        self.connect((self.interp_fir_filter_xxx_0, 0), (self.osmosdr_sink_0, 0))
+        self.connect((self.interp_fir_filter_xxx_0, 0), (self.blocks_multiply_const_vxx_1, 0))
 
-    def _montar_rx(self, rx_args):
+    def _montar_canal(self):
+        ##################################################
+        # Blocks - canal (no .grc: virtual sink/source 'tx' e 'rx')
+        ##################################################
+        self.blocks_multiply_const_vxx_2 = blocks.multiply_const_cc(10**(self.rf_gain/20))
+        self.channels_channel_model_0 = channels.channel_model(
+            noise_voltage=self.noise_v,
+            frequency_offset=0.0001,
+            epsilon=1.00001,
+            taps=[1.0],
+            noise_seed=42,
+            block_tags=False)
+        self.fir_filter_xxx_0 = filter.fir_filter_ccc(4, firdes.low_pass(1.0, self.tx_samp_rate, 0.4*self.rx_samp_rate, 0.1*self.rx_samp_rate))
+        self.fir_filter_xxx_0.declare_sample_delay(0)
+
+        ##################################################
+        # Connections - canal
+        ##################################################
+        self.connect((self.blocks_multiply_const_vxx_1, 0), (self.blocks_multiply_const_vxx_2, 0))
+        self.connect((self.blocks_multiply_const_vxx_2, 0), (self.channels_channel_model_0, 0))
+        self.connect((self.channels_channel_model_0, 0), (self.fir_filter_xxx_0, 0))
+
+    def _montar_rx(self):
         ##################################################
         # Blocks - RX
         ##################################################
-        self.osmosdr_source_0 = osmosdr.source(
-            args="numchan=" + str(1) + " " + rx_args
-        )
-        self.osmosdr_source_0.set_time_unknown_pps(osmosdr.time_spec_t())
-        self.osmosdr_source_0.set_sample_rate(self.rx_samp_rate)
-        self.osmosdr_source_0.set_center_freq(self.freq, 0)
-        self.osmosdr_source_0.set_freq_corr(0, 0)
-        self.osmosdr_source_0.set_dc_offset_mode(0, 0)
-        self.osmosdr_source_0.set_iq_balance_mode(0, 0)
-        self.osmosdr_source_0.set_gain_mode(False, 0)
-        self.osmosdr_source_0.set_gain(self.rf_gain, 0)
-        self.osmosdr_source_0.set_if_gain(0, 0)
-        self.osmosdr_source_0.set_bb_gain(0, 0)
-        self.osmosdr_source_0.set_antenna('', 0)
-        self.osmosdr_source_0.set_bandwidth(0, 0)
         self.interp_fir_filter_xxx_1 = filter.interp_fir_filter_ccc(1, self.rx_taps/self.rx_sps)
         self.interp_fir_filter_xxx_1.declare_sample_delay(0)
-        self.analog_agc_xx_0 = analog.agc_cc((1e-4), 1.0, 1.0, 1e3)
+        self.analog_agc_xx_0 = analog.agc_cc((1e-6), 1.0, 1.0, 1e3)
         self.digital_symbol_sync_xx_0 = digital.symbol_sync_cc(
             digital.TED_GARDNER,
             self.rx_sps,
@@ -491,8 +467,8 @@ class qpsk_5g_hw(gr.top_block):
         ##################################################
         # Connections - RX
         ##################################################
-        self.connect((self.osmosdr_source_0, 0), (self.blocks_probe_rate_0_0, 0))
-        self.connect((self.osmosdr_source_0, 0), (self.interp_fir_filter_xxx_1, 0))
+        self.connect((self.fir_filter_xxx_0, 0), (self.blocks_probe_rate_0_0, 0))
+        self.connect((self.fir_filter_xxx_0, 0), (self.interp_fir_filter_xxx_1, 0))
         self.connect((self.interp_fir_filter_xxx_1, 0), (self.analog_agc_xx_0, 0))
         self.connect((self.analog_agc_xx_0, 0), (self.digital_symbol_sync_xx_0, 0))
         self.connect((self.digital_symbol_sync_xx_0, 0), (self.blocks_multiply_const_vxx_0, 0))
@@ -515,15 +491,12 @@ class qpsk_5g_hw(gr.top_block):
         threading.Thread(target=_loop, daemon=True).start()
 
     def _atualizar_taxas(self):
-        """Recalcula taxas de amostragem e filtros RRC apos mudar baud/sps."""
+        """Recalcula taxas de amostragem e filtros apos mudar baud/sps."""
         self.tx_samp_rate = self.baud_rate * self.tx_sps
         self.rx_samp_rate = self.baud_rate * self.rx_sps
         self.set_tx_rrc_taps(firdes.root_raised_cosine(self.tx_sps, self.tx_samp_rate, self.baud_rate, 0.25, (11*self.tx_sps)))
         self.set_rx_rrc_taps(firdes.root_raised_cosine(self.rx_sps, self.rx_samp_rate, self.baud_rate, 0.25, (11*self.rx_sps)))
-        if self.tem_tx:
-            self.osmosdr_sink_0.set_sample_rate(self.tx_samp_rate)
-        if self.tem_rx:
-            self.osmosdr_source_0.set_sample_rate(self.rx_samp_rate)
+        self.fir_filter_xxx_0.set_taps(firdes.low_pass(1.0, self.tx_samp_rate, 0.4*self.rx_samp_rate, 0.1*self.rx_samp_rate))
 
     # ---- taxas ----
     def get_bit_rate(self):
@@ -553,8 +526,7 @@ class qpsk_5g_hw(gr.top_block):
     def set_rx_sps(self, rx_sps):
         self.rx_sps = rx_sps
         self._atualizar_taxas()
-        if self.tem_rx:
-            self.digital_symbol_sync_xx_0.set_sps(self.rx_sps)
+        self.digital_symbol_sync_xx_0.set_sps(self.rx_sps)
 
     def get_tx_samp_rate(self):
         return self.tx_samp_rate
@@ -576,8 +548,8 @@ class qpsk_5g_hw(gr.top_block):
     def get_K(self):
         return self.K
 
-    # N e K (e portanto R) sao definidos na construcao (--N / --R) e nao mudam com o
-    # link no ar: o codificador/decodificador polar, o mux, o epy_block_0_0 (N) e os
+    # N e K (e portanto R) sao definidos na construcao (--N / --R) e nao mudam com a
+    # simulacao rodando: o codificador/decodificador polar, o mux, o epy_block_0_0 (N) e os
     # blocos de quadro (K-32) teriam de ser recriados juntos. Para mudar R, reinicie.
     def get_R(self):
         return self.R
@@ -629,16 +601,14 @@ class qpsk_5g_hw(gr.top_block):
 
     def set_tx_taps(self, tx_taps):
         self.tx_taps = tx_taps
-        if self.tem_tx:
-            self.interp_fir_filter_xxx_0.set_taps(self.tx_taps)
+        self.interp_fir_filter_xxx_0.set_taps(self.tx_taps)
 
     def get_rx_taps(self):
         return self.rx_taps
 
     def set_rx_taps(self, rx_taps):
         self.rx_taps = rx_taps
-        if self.tem_rx:
-            self.interp_fir_filter_xxx_1.set_taps(self.rx_taps/self.rx_sps)
+        self.interp_fir_filter_xxx_1.set_taps(self.rx_taps/self.rx_sps)
 
     # ---- sincronismo / constelacao ----
     def get_access_code(self):
@@ -661,45 +631,43 @@ class qpsk_5g_hw(gr.top_block):
 
     def set_qpsk(self, qpsk):
         self.qpsk = qpsk
-        if self.tem_tx:
-            self.digital_constellation_encoder_bc_0.set_constellation(self.qpsk)
-        if self.tem_rx:
-            self.digital_constellation_soft_decoder_cf_0.set_constellation(self.qpsk)
+        self.digital_constellation_encoder_bc_0.set_constellation(self.qpsk)
+        self.digital_constellation_soft_decoder_cf_0.set_constellation(self.qpsk)
 
-    # ---- radio ----
+    # ---- canal e ganhos ----
     def get_freq(self):
         return self.freq
 
     def set_freq(self, freq):
         self.freq = freq
-        if self.tem_tx:
-            self.osmosdr_sink_0.set_center_freq(self.freq, 0)
-        if self.tem_rx:
-            self.osmosdr_source_0.set_center_freq(self.freq, 0)
+
+    def get_noise_v(self):
+        return self.noise_v
+
+    def set_noise_v(self, noise_v):
+        self.noise_v = noise_v
+        self.channels_channel_model_0.set_noise_voltage(self.noise_v)
 
     def get_rftxgain(self):
         return self.rftxgain
 
     def set_rftxgain(self, rftxgain):
         self.rftxgain = rftxgain
-        if self.tem_tx:
-            self.osmosdr_sink_0.set_gain(self.rftxgain, 0)
+        self.blocks_multiply_const_vxx_1.set_k(10**((self.rftxgain + self.iftxgain)/20))
 
     def get_iftxgain(self):
         return self.iftxgain
 
     def set_iftxgain(self, iftxgain):
         self.iftxgain = iftxgain
-        if self.tem_tx:
-            self.osmosdr_sink_0.set_if_gain(self.iftxgain, 0)
+        self.blocks_multiply_const_vxx_1.set_k(10**((self.rftxgain + self.iftxgain)/20))
 
     def get_rf_gain(self):
         return self.rf_gain
 
     def set_rf_gain(self, rf_gain):
         self.rf_gain = rf_gain
-        if self.tem_rx:
-            self.osmosdr_source_0.set_gain(self.rf_gain, 0)
+        self.blocks_multiply_const_vxx_2.set_k(10**(self.rf_gain/20))
 
     # ---- medidores ----
     def get_vazao_probe(self):
@@ -727,17 +695,8 @@ class qpsk_5g_hw(gr.top_block):
         self.bler_probe = bler_probe
 
 
-# Fatores ajustaveis no terminal; main() reduz esta lista conforme o modo.
-FATORES = ('freq', 'rftxgain', 'iftxgain', 'rf_gain')
-
-
-def fatores_do_modo(modo):
-    fatores = ['freq']
-    if 'tx' in modo.split('+'):
-        fatores += ['rftxgain', 'iftxgain']
-    if 'rx' in modo.split('+'):
-        fatores += ['rf_gain']
-    return tuple(fatores)
+# Fatores ajustaveis no terminal com a simulacao rodando.
+FATORES = ('noise_v', 'rftxgain', 'iftxgain', 'rf_gain')
 
 
 def fracao(texto):
@@ -753,31 +712,23 @@ def fracao(texto):
 
 def ler_args(argv=None):
     parser = ArgumentParser(
-        description='QPSK - 5G: TX (HackRF) e/ou RX (RTL-SDR) num unico arquivo.',
-        epilog='Com o link rodando, digite no terminal, por exemplo: '
-               'rftxgain 20   (varios de uma vez: rftxgain 20, rf_gain 40; '
+        description='QPSK - 5G: simulacao TX -> canal -> RX num unico arquivo.',
+        epilog='Com a simulacao rodando, digite no terminal, por exemplo: '
+               'noise_v 20   (varios de uma vez: noise_v 20, rf_gain 6; '
                'reset zera a BLER; clear limpa o terminal). '
                'ENTER vazio encerra.')
-    parser.add_argument('--modo', choices=MODOS, default='tx+rx',
-                        help='o que montar: so transmissor, so receptor ou os dois (padrao: tx+rx)')
     parser.add_argument('--R', type=fracao, default=0.5, metavar='TAXA',
-                        help='taxa do codigo polar K/N, ex.: 1/3, 0.5, 3/4 (padrao: 1/2). '
-                             'Igual no TX e no RX')
+                        help='taxa do codigo polar K/N, ex.: 1/3, 0.5, 3/4 (padrao: 1/2)')
     parser.add_argument('--N', type=int, default=1024, metavar='BITS',
-                        help='bits codificados por bloco, potencia de 2 ate 1024 (padrao: 1024). '
-                             'Igual no TX e no RX')
-    parser.add_argument('--freq', type=eng_float, default=None, metavar='HZ',
-                        help='frequencia central (padrao do flowgraph: 670M)')
+                        help='bits codificados por bloco, potencia de 2 ate 1024 (padrao: 1024)')
+    parser.add_argument('--noise_v', type=eng_float, default=None, metavar='V',
+                        help='tensao de ruido do Channel Model (padrao do flowgraph: 50)')
     parser.add_argument('--rftxgain', type=eng_float, default=None, metavar='dB',
-                        help='ganho RF do TX (padrao do flowgraph: 30)')
+                        help='ganho RF do TX, amplificador do HackRF: 0 ou 14 dB (padrao do flowgraph: 0)')
     parser.add_argument('--iftxgain', type=eng_float, default=None, metavar='dB',
-                        help='ganho IF do TX (padrao do flowgraph: 30)')
+                        help='ganho IF do TX (padrao do flowgraph: 40)')
     parser.add_argument('--rf_gain', type=eng_float, default=None, metavar='dB',
-                        help='ganho RF do RX (padrao do flowgraph: 30)')
-    parser.add_argument('--tx_args', default='hackrf=0', metavar='ARGS',
-                        help='argumentos osmosdr do TX (padrao: hackrf=0)')
-    parser.add_argument('--rx_args', default='rtl=0', metavar='ARGS',
-                        help='argumentos osmosdr do RX (padrao: rtl=0)')
+                        help='ganho RF do RX (padrao do flowgraph: 3.7)')
     return parser.parse_args(argv)
 
 
@@ -787,8 +738,8 @@ COMANDOS_CLEAR = ('clear', 'limpar')
 
 def aplicar_comando(tb, linha):
     """Muda fatores do canal com a simulacao rodando.
-    Ex.: 'noise_voltage 0.5'  ou  'noise_voltage 0.5, freq_offset 0.001'
-    (tambem aceita '=': 'noise_voltage=0.5,freq_offset=0.001').
+    Ex.: 'noise_v 20'  ou  'noise_v 20, rf_gain 6'
+    (tambem aceita '=': 'noise_v=20,rf_gain=6').
     'reset' zera a BLER; 'clear' limpa o terminal (o painel fica)."""
     uso = ('uso: <fator> <valor> [, <fator> <valor> ...]   fatores: ' + ', '.join(FATORES)
            + '   |   reset: zera a BLER   |   clear: limpa o terminal')
@@ -822,18 +773,15 @@ def aplicar_comando(tb, linha):
     for tipo, nome, valor in acoes:       # so aplica depois de validar tudo
         if tipo == 'reset':
             # usa a porta de mensagem 'zerar' do Medidor de BLER
-            if tb.tem_rx:
-                tb.epy_block_1._post(pmt.intern('zerar'), pmt.PMT_T)
-                print('BLER zerada')
-            else:
-                print('reset so vale com RX ativo (modo atual: ' + tb.modo + ')')
+            tb.epy_block_1._post(pmt.intern('zerar'), pmt.PMT_T)
+            print('BLER zerada')
         elif tipo == 'clear':
             limpar_terminal()
         else:
             getattr(tb, 'set_' + nome)(valor)
             mudou = True
     if mudou:                             # mostra todos os fatores, inclusive os nao alterados
-        print('Radio: ' + ', '.join(f'{n} = {getattr(tb, "get_" + n)()}' for n in FATORES))
+        print('Canal: ' + ', '.join(f'{n} = {getattr(tb, "get_" + n)()}' for n in FATORES))
 
 
 ALTURA_PAINEL = 4   # linhas reservadas no rodape do terminal
@@ -867,14 +815,10 @@ def painel_encerrar():
 
 
 def linhas_painel(tb):
-    """As 3 linhas de dados do painel; com RX mostra os medidores, so com TX mostra o que esta no ar."""
-    if tb.tem_rx:
-        return [f' BLER     : {tb.get_bler_probe()}',
-                f' Vazao    : {tb.get_vazao_probe():,.0f} bit/s',
-                f' Baudrate : {tb.get_baud_rate_probe():,.0f} baud']
-    return [f' Modo     : {tb.modo}   (transmitindo)',
-            f' Freq     : {tb.get_freq():,.0f} Hz',
-            f' Ganho TX : RF {tb.get_rftxgain()} dB, IF {tb.get_iftxgain()} dB']
+    """As 3 linhas de dados do painel: os medidores do RX."""
+    return [f' BLER     : {tb.get_bler_probe()}',
+            f' Vazao    : {tb.get_vazao_probe():,.0f} bit/s',
+            f' Baudrate : {tb.get_baud_rate_probe():,.0f} baud']
 
 
 def monitorar(tb, periodo=0.5):
@@ -901,18 +845,16 @@ def monitorar(tb, periodo=0.5):
         time.sleep(periodo)
 
 
-def main(top_block_cls=qpsk_5g_hw, options=None):
-    global FATORES
+def main(top_block_cls=qpsk_5g_sim, options=None):
     if options is None:
         options = ler_args()
-    FATORES = fatores_do_modo(options.modo)
     N = options.N
     K = round(options.R * N)
     try:
         validar_codigo(N, K)
     except ValueError as e:
         sys.exit(f'erro: {e}')
-    tb = top_block_cls(modo=options.modo, tx_args=options.tx_args, rx_args=options.rx_args, N=N, K=K)
+    tb = top_block_cls(N=N, K=K)
 
     def sig_handler(sig=None, frame=None):
         tb.stop()
@@ -923,28 +865,24 @@ def main(top_block_cls=qpsk_5g_hw, options=None):
     signal.signal(signal.SIGINT, sig_handler)
     signal.signal(signal.SIGTERM, sig_handler)
 
-    for nome in ('freq', 'rftxgain', 'iftxgain', 'rf_gain'):   # valores iniciais da linha de comando
+    for nome in FATORES:                       # valores iniciais da linha de comando
         valor = getattr(options, nome)
-        if valor is None:
-            continue
-        if nome in FATORES:
+        if valor is not None:
             getattr(tb, 'set_' + nome)(valor)
-        else:
-            print(f'aviso: --{nome} ignorado no modo {options.modo}')
 
     tb.start()
     tb.flowgraph_started.set()
     painel_iniciar()
     threading.Thread(target=monitorar, args=(tb,), daemon=True).start()
 
-    print(f'Modo: {options.modo}')
+    print('Modo: simulacao (TX -> canal -> RX)')
     vazao_teorica = tb.bit_rate * tb.bits_dados / (tb.N + tb.sync_len)
     print(f'Codigo polar: N = {tb.N}, K = {tb.K}, R = {tb.R:.3f}   '
           f'({tb.bits_dados} bits uteis/quadro, vazao teorica = {vazao_teorica:,.0f} bit/s)')
     print(f'Access code: {tb.sync_len} bits ({ACCESS_CODE_HEX}), limiar de deteccao = {LIMIAR_AC}')
-    print('Radio: ' + ', '.join(f'{n} = {getattr(tb, "get_" + n)()}' for n in FATORES))
-    print('Para mudar com o link rodando, digite por exemplo: ' + FATORES[-1] + ' <valor>')
-    print('reset zera a BLER (so com RX)   |   clear limpa o terminal   |   setas cima/baixo: historico')
+    print('Canal: ' + ', '.join(f'{n} = {getattr(tb, "get_" + n)()}' for n in FATORES))
+    print('Para mudar com a simulacao rodando, digite por exemplo: ' + FATORES[0] + ' <valor>')
+    print('reset zera a BLER   |   clear limpa o terminal   |   setas cima/baixo: historico')
     try:
         while True:
             linha = input('Comando (ENTER vazio encerra): ').strip()

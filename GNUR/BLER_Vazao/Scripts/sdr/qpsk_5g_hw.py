@@ -16,20 +16,13 @@
 #   python3 qpsk_5g_hw.py --R 3/4 --N 512  # taxa e tamanho do bloco polar
 #
 # Importante: TX e RX precisam rodar esta mesma versao do script. O TX numera
-# os quadros e o medidor de BLER do RX usa essa numeracao. O mesmo vale para
-# --R e --N: TX e RX precisam usar valores IGUAIS, senao o RX nao decodifica.
+# os quadros (bloco Contador, que escreve o numero na FRENTE dos dados, sem
+# sobrescrever nada) e o medidor de BLER do RX usa essa numeracao. O mesmo vale
+# para --R e --N: TX e RX precisam usar valores IGUAIS, senao o RX nao decodifica.
 #
 # Access code: 160 bits (5x os 32 bits da versao anterior), definido uma unica
 # vez em ACCESS_CODE_HEX. Esta versao NAO e compativel com TX/RX da versao de
 # 32 bits: os dois lados precisam ser atualizados.
-#
-# Embaralhador (30/10): o TX faz XOR dos N bits codificados de cada quadro com
-# uma sequencia pseudoaleatoria fixa (PN15) e o RX desfaz trocando o sinal dos
-# LLRs, antes do decodificador polar (como no 5G). Sem ele, com R baixa (sobretudo
-# 0,1) a palavra-codigo tem longas sequencias de simbolos iguais, o sincronismo de
-# simbolo (Gardner) escorrega e a BLER nao melhora com mais potencia. Fora isso,
-# o flowgraph e o mesmo da versao anterior.
-# ATENCAO: TX e RX precisam ser os dois desta versao (ou os dois da anterior).
 
 from gnuradio import analog
 from gnuradio import blocks
@@ -166,7 +159,7 @@ epy_block_0_0 = SimpleNamespace(blk=_epy_block_0_0_blk)
 Medidor de BLER por numeracao de quadros.
 
 O TX escreve um numero sequencial (0, 1, 2, ...) nos primeiros 'bits_numero'
-bits de dados de cada quadro (bloco 'Numerador de quadros', mais abaixo).
+bits de dados de cada quadro (bloco 'Contador', mais abaixo).
 Este medidor fica na saida do CRC, que so deixa passar quadros corretos, e le
 esse numero. Se chegam os quadros 7 e 10, os quadros 8 e 9 se perderam: 2 erros.
 
@@ -255,39 +248,28 @@ class _epy_block_1_blk(gr.sync_block):
 epy_block_1 = SimpleNamespace(blk=_epy_block_1_blk)
 
 
-# ---- epy_block_2: Numerador de quadros (TX) ----
+# ---- epy_block_2: Contador (TX) ----
 class _epy_block_2_blk(gr.sync_block):
     """
-    Numerador de quadros.
+    Contador: 0, 1, 2, ... com 'bits' bits cada, o mais significativo primeiro.
 
-    Escreve o numero do quadro (0, 1, 2, ..., MSB primeiro) nos primeiros
-    'bits_numero' bits de cada quadro de 'bits_por_quadro' bits de dados.
-    O resto do quadro continua aleatorio. O Medidor de BLER do RX usa esse
-    numero para saber quais quadros se perderam.
+    Fica na entrada 0 do Stream Mux que monta os dados de cada quadro: o numero
+    vai na frente dos dados, sem sobrescrever nada. O Medidor de BLER do RX usa
+    esse numero para saber quais quadros se perderam.
     """
 
-    def __init__(self, bits_por_quadro=480, bits_numero=32):
-        gr.sync_block.__init__(
-            self,
-            name='Numerador de quadros',
-            in_sig=[np.uint8],
-            out_sig=[np.uint8],
-        )
-        if bits_numero > bits_por_quadro:
-            raise ValueError('o numero do quadro nao cabe no quadro')
-        self.bits_por_quadro = int(bits_por_quadro)
-        self.bits_numero = int(bits_numero)
+    def __init__(self, bits=32):
+        gr.sync_block.__init__(self, name='Contador', in_sig=None, out_sig=[np.uint8])
+        self.bits = bits
+        self.numero = 0                       # próximo número a sair
+        self.set_output_multiple(bits)        # sempre há espaço para um número inteiro
 
     def work(self, input_items, output_items):
         out = output_items[0]
-        n = len(out)
-        out[:] = input_items[0][:n]
-        i = self.nitems_written(0) + np.arange(n, dtype=np.int64)   # indice de cada bit no fluxo
-        pos = i % self.bits_por_quadro                              # posicao do bit no quadro
-        cab = pos < self.bits_numero                                # bits reservados ao numero
-        numero = (i[cab] // self.bits_por_quadro) % (1 << self.bits_numero)
-        out[cab] = (numero >> (self.bits_numero - 1 - pos[cab])) & 1
-        return n
+        binario = format(self.numero % 2**self.bits, f'0{self.bits}b')   # ex.: 5 -> '000...101'
+        out[:self.bits] = [int(b) for b in binario]
+        self.numero += 1
+        return self.bits                      # um número (32 bits) por chamada
 
 
 epy_block_2 = SimpleNamespace(blk=_epy_block_2_blk)
@@ -312,20 +294,6 @@ ACCESS_CODE = ''.join(f'{b:08b}' for b in bytes.fromhex(ACCESS_CODE_HEX))   # MS
 # 0,6 mesmo em Es/N0 ~ -1 dB, entao 0,6 acha os quadros bem antes do decodificador
 # polar falhar e quase nao tem falso alarme.
 LIMIAR_AC = 0.6
-
-
-def sequencia_embaralhamento(n, estado=0x7FFF):
-    """PN15 (x^15 + x^14 + 1): n bits pseudoaleatorios, os mesmos em todo quadro, no TX e no RX.
-    O codigo polar de taxa baixa gera palavras muito estruturadas: com R = 0,1 so 25% dos
-    simbolos vizinhos sao diferentes (dados aleatorios: 75%) e ha sequencias de ate 72 simbolos
-    iguais. O XOR com esta sequencia deixa a palavra parecida com dados aleatorios (com R = 0,1,
-    no maximo 10 simbolos iguais seguidos)."""
-    bits = np.empty(n, dtype=np.uint8)
-    for i in range(n):
-        b = ((estado >> 14) ^ (estado >> 13)) & 1
-        estado = ((estado << 1) | b) & 0x7FFF
-        bits[i] = b
-    return bits
 
 
 def validar_access_code(access_code):
@@ -386,7 +354,7 @@ class qpsk_5g_hw(gr.top_block):
         self.qpsk = qpsk = digital.constellation_qpsk().base()
         self.qpsk.set_npwr(1.0)
         self.freq = freq = 670e6
-        self.rftxgain = rftxgain = 30
+        self.rftxgain = rftxgain = 14        # amplificador do HackRF: 0 ou 14 dB
         self.iftxgain = iftxgain = 30
         self.rf_gain = rf_gain = 30
         self.vazao_probe = vazao_probe = 0
@@ -410,14 +378,10 @@ class qpsk_5g_hw(gr.top_block):
         ##################################################
         self.analog_random_uniform_source_x_0 = analog.random_uniform_source_b(0, 256, 42)
         self.blocks_unpack_k_bits_bb_0 = blocks.unpack_k_bits_bb(8)
-        self.epy_block_2 = epy_block_2.blk(bits_por_quadro=self.bits_dados, bits_numero=self.bits_numero)
+        self.epy_block_2 = epy_block_2.blk(bits=self.bits_numero)
+        self.blocks_stream_mux_1 = blocks.stream_mux(gr.sizeof_char*1, (self.bits_numero, self.bits_dados - self.bits_numero))
         self.blocks_stream_to_tagged_stream_0 = blocks.stream_to_tagged_stream(gr.sizeof_char, 1, self.bits_dados, "quadro")
         self.digital_crc32_bb_0_0 = digital.crc32_bb(False, "quadro", False)
-        # Embaralhador: XOR dos N bits de cada palavra-codigo com a sequencia PN15
-        # (a sequencia repete a cada N bits, entao fica alinhada com os quadros)
-        self.blocks_vector_source_embaralha = blocks.vector_source_b(
-            tuple(int(b) for b in sequencia_embaralhamento(self.N)), True, 1, [])
-        self.blocks_xor_embaralha = blocks.xor_bb()
         self.fec_extended_tagged_encoder_0 = fec.extended_tagged_encoder(encoder_obj_list=self.PC_enc, puncpat='11', lentagname="quadro", mtu=1500)
         self.blocks_vector_source_x_0 = blocks.vector_source_b(
             tuple(int(self.access_code[i:i + 8], 2) for i in range(0, self.sync_len, 8)), True, 1, [])
@@ -444,13 +408,12 @@ class qpsk_5g_hw(gr.top_block):
         # Connections - TX
         ##################################################
         self.connect((self.analog_random_uniform_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0, 0))
-        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.epy_block_2, 0))
-        self.connect((self.epy_block_2, 0), (self.blocks_stream_to_tagged_stream_0, 0))
+        self.connect((self.blocks_unpack_k_bits_bb_0, 0), (self.blocks_stream_mux_1, 1))
+        self.connect((self.epy_block_2, 0), (self.blocks_stream_mux_1, 0))
+        self.connect((self.blocks_stream_mux_1, 0), (self.blocks_stream_to_tagged_stream_0, 0))
         self.connect((self.blocks_stream_to_tagged_stream_0, 0), (self.digital_crc32_bb_0_0, 0))
         self.connect((self.digital_crc32_bb_0_0, 0), (self.fec_extended_tagged_encoder_0, 0))
-        self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_xor_embaralha, 0))
-        self.connect((self.blocks_vector_source_embaralha, 0), (self.blocks_xor_embaralha, 1))
-        self.connect((self.blocks_xor_embaralha, 0), (self.blocks_stream_mux_0, 1))
+        self.connect((self.fec_extended_tagged_encoder_0, 0), (self.blocks_stream_mux_0, 1))
         self.connect((self.blocks_vector_source_x_0, 0), (self.blocks_unpack_k_bits_bb_0_0, 0))
         self.connect((self.blocks_unpack_k_bits_bb_0_0, 0), (self.blocks_stream_mux_0, 0))
         self.connect((self.blocks_stream_mux_0, 0), (self.blocks_pack_k_bits_bb_1, 0))
@@ -496,11 +459,6 @@ class qpsk_5g_hw(gr.top_block):
         self.digital_costas_loop_cc_0 = digital.costas_loop_cc((2*np.pi/200), 4, False)
         self.digital_constellation_soft_decoder_cf_0 = digital.constellation_soft_decoder_cf(self.qpsk, -1)
         self.epy_block_0_0 = epy_block_0_0.blk(access_code=self.access_code, payload_len_in_bits=self.N, tag_key="quadro", threshold=LIMIAR_AC)
-        # Desembaralhador: o Find Access Code entrega N LLRs por quadro; onde a
-        # sequencia PN15 vale 1, o bit foi invertido no TX, entao o LLR troca de sinal
-        self.blocks_vector_source_desembaralha = blocks.vector_source_f(
-            tuple(float(v) for v in 1.0 - 2.0 * sequencia_embaralhamento(self.N)), True, 1, [])
-        self.blocks_multiply_desembaralha = blocks.multiply_ff(1)
         self.fec_extended_tagged_decoder_0 = fec.extended_tagged_decoder(decoder_obj_list=self.PC_dec, ann=None, puncpat='11', integration_period=10000, lentagname="quadro", mtu=1500)
         self.digital_crc32_bb_0 = digital.crc32_bb(True, "quadro", False)
 
@@ -528,9 +486,7 @@ class qpsk_5g_hw(gr.top_block):
         self.connect((self.digital_costas_loop_cc_0, 0), (self.blocks_probe_rate_0, 0))
         self.connect((self.digital_costas_loop_cc_0, 0), (self.digital_constellation_soft_decoder_cf_0, 0))
         self.connect((self.digital_constellation_soft_decoder_cf_0, 0), (self.epy_block_0_0, 0))
-        self.connect((self.epy_block_0_0, 0), (self.blocks_multiply_desembaralha, 0))
-        self.connect((self.blocks_vector_source_desembaralha, 0), (self.blocks_multiply_desembaralha, 1))
-        self.connect((self.blocks_multiply_desembaralha, 0), (self.fec_extended_tagged_decoder_0, 0))
+        self.connect((self.epy_block_0_0, 0), (self.fec_extended_tagged_decoder_0, 0))
         self.connect((self.fec_extended_tagged_decoder_0, 0), (self.digital_crc32_bb_0, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.blocks_probe_rate_0_1, 0))
         self.connect((self.digital_crc32_bb_0, 0), (self.epy_block_1, 0))
@@ -799,7 +755,7 @@ def ler_args(argv=None):
     parser.add_argument('--freq', type=eng_float, default=None, metavar='HZ',
                         help='frequencia central (padrao do flowgraph: 670M)')
     parser.add_argument('--rftxgain', type=eng_float, default=None, metavar='dB',
-                        help='ganho RF do TX (padrao do flowgraph: 30)')
+                        help='ganho RF do TX, amplificador do HackRF: 0 ou 14 dB (padrao do flowgraph: 14)')
     parser.add_argument('--iftxgain', type=eng_float, default=None, metavar='dB',
                         help='ganho IF do TX (padrao do flowgraph: 30)')
     parser.add_argument('--rf_gain', type=eng_float, default=None, metavar='dB',
@@ -816,9 +772,9 @@ COMANDOS_CLEAR = ('clear', 'limpar')
 
 
 def aplicar_comando(tb, linha):
-    """Muda fatores do canal com a simulacao rodando.
-    Ex.: 'noise_voltage 0.5'  ou  'noise_voltage 0.5, freq_offset 0.001'
-    (tambem aceita '=': 'noise_voltage=0.5,freq_offset=0.001').
+    """Muda fatores do radio com o link rodando.
+    Ex.: 'rf_gain 40'  ou  'rftxgain 0, iftxgain 20'
+    (tambem aceita '=': 'rftxgain=0,iftxgain=20').
     'reset' zera a BLER; 'clear' limpa o terminal (o painel fica)."""
     uso = ('uso: <fator> <valor> [, <fator> <valor> ...]   fatores: ' + ', '.join(FATORES)
            + '   |   reset: zera a BLER   |   clear: limpa o terminal')
