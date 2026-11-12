@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """Varredura do link HackRF -> RTL-SDR. Grava BLER e vazão em CSV.
 Cada variável aceita INICIO FIM PASSO (varre) ou VALOR (fixa). Começa do maior ganho. Exemplo:
-  python3 varredura_hw-c.py --iftx 0 45 5 --rftx 14 --rfrx 0 50 10 -o saida.csv
+  python3 varredura.py --iftx 0 45 5 --rftx 14 --rfrx 0 50 10 -o saida.csv
 O --R (taxa do código polar K/N, aceita 0.5 ou 1/2) segue a mesma regra: VALOR fixa, INICIO FIM PASSO varre
 (padrão: --R 1/3 2/3 1/6, ou seja, 1/3, 1/2 e 2/3; --R 0.1 0.9 0.1 varre de 0,1 a 0,9). A varredura de
 ganhos roda inteira para o primeiro R, depois para o segundo, e assim por diante. O R só se define na
 criação do flowgraph, então a cada troca ele é derrubado (soltando HackRF e RTL-SDR) e criado de novo.
 --N e --amostras valem para a varredura inteira.
 
-Como a BLER é medida: o TX numera os quadros (bloco 'Numerador de quadros' do qpsk_5g_hw.py).
+Como a BLER é medida: o TX numera os quadros (bloco 'Contador' do qpsk_5g_hw.py).
 Em cada ponto, depois do descarte, o script anota o número do próximo quadro que o TX vai gerar
 (A) e mede exatamente os quadros A, A+1, ..., A+N-1. Cada um deles ou sai certo do CRC no RX ou
 conta como erro. Nada é estimado pelo tempo: perdas no começo, no meio ou no fim da janela entram
@@ -72,7 +72,7 @@ OPCOES = {'iftxgain': '--iftx', 'rftxgain': '--rftx', 'rf_gain': '--rfrx', 'freq
 for nome, padrao in PADRAO.items():
     ap.add_argument(OPCOES[nome], dest=nome, nargs='+', type=float, default=padrao)
 ap.add_argument('--amostras', type=float, default=50e6,
-                help='amostras do RTL-SDR por ponto, contando o descarte (padrão: 50e6, ~21 s, 15025 quadros)')
+                help='amostras do RTL-SDR por ponto, contando o descarte (padrão: 50e6, ~21 s, ~13400 quadros com N = 1024)')
 ap.add_argument('--erros', type=int, default=0,
                 help='encerra o ponto assim que chegar a este número de erros (padrão: 0 = nunca)')
 ap.add_argument('--espera', type=float, default=30, metavar='S',
@@ -85,12 +85,16 @@ ap.add_argument('--R', type=hw.fracao, nargs='+', default=[1 / 3, 2 / 3, 1 / 6],
                      '(padrão: 1/3 2/3 1/6 = 1/3, 1/2, 2/3); cada R roda a varredura de ganhos inteira')
 ap.add_argument('--N', type=int, default=1024, metavar='BITS',
                 help='bits codificados por bloco, potência de 2 até 1024 (padrão: 1024); vale para toda a varredura')
+ap.add_argument('--sobrescrever', action='store_true',
+                help='com -o, permite sobrescrever um arquivo que já existe (padrão: recusa)')
 ap.add_argument('-o', '--csv', default=None, metavar='ARQUIVO',
                 help='arquivo de saída (padrão: resultado_DDMM.csv; nos testes seguintes do mesmo dia, '
                      'resultado_DDMM1.csv, resultado_DDMM2.csv, ...)')
 args = ap.parse_args()
 if args.csv is None:
     args.csv = nome_resultado()
+elif Path(args.csv).exists() and not args.sobrescrever:
+    sys.exit(f'{args.csv} já existe; escolha outro nome ou use --sobrescrever')
 if args.amostras <= DESCARTE:
     sys.exit(f'--amostras deve ser maior que {DESCARTE:g}')
 if args.erros < 0:
@@ -240,10 +244,12 @@ def montar(K, tentativas=1):
     numerador = tb.epy_block_2       # TX: escreve o número em cada quadro
     costas = tb.digital_costas_loop_cc_0
     c = ContadorAmostras()
-    q = ContadorQuadros(numerador.bits_por_quadro, numerador.bits_numero)
+    q = ContadorQuadros(tb.bits_dados, tb.bits_numero)
     tb.connect((tb.osmosdr_source_0, 0), (c, 0))
     tb.connect((tb.digital_crc32_bb_0, 0), (q, 0))
-    MODULO = 1 << numerador.bits_numero
+    MODULO = 1 << tb.bits_numero
+    if not (hasattr(tb, 'bits_dados') and hasattr(tb, 'bits_numero')):
+        raise RuntimeError('qpsk_5g_hw.py incompatível: faltam tb.bits_dados / tb.bits_numero')
     atual.clear()                    # o flowgraph novo começa com os ganhos padrão: reaplica tudo
 
     taxa_amostragem = tb.get_baud_rate() * tb.get_rx_sps()
@@ -269,7 +275,8 @@ def liberar(pausa=True):
 
 def quadro_tx():
     """Quantos quadros o TX já gerou (o próximo a ser gerado recebe este número)."""
-    return numerador.nitems_written(0) // numerador.bits_por_quadro
+    # O Contador só emite os bits do número (um número por quadro), então divide-se por bits_numero.
+    return numerador.nitems_written(0) // tb.bits_numero
 
 
 def medir_latencia(segundos=2.0):
@@ -507,7 +514,7 @@ try:
             bler = erros / quadros
             if bler < 0.1:
                 f_bom = costas.get_frequency()
-            vazao = ok * numerador.bits_por_quadro / (quadros * periodo_quadro)   # bits certos por segundo
+            vazao = ok * tb.bits_dados / (quadros * periodo_quadro)   # bits certos por segundo
             baud = (a1 - a0) / (t1 - t0) / tb.get_rx_sps()
             escritor.writerow({'N': tb.N, 'K': tb.K, 'R': round(tb.R, 4), **ponto,
                                'amostras': quadros * amostras_por_quadro, 'quadros': quadros,
